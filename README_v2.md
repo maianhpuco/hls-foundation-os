@@ -64,4 +64,19 @@ Same structure as the main decode head.
 
  
 
- 
+Modification later: 
+- Short prompts vs. long prompts
+Compare num_prompts=4, 8, 16, 32
+Small number = quick, lightweight adaptation
+Larger number = model can learn richer adaptation.
+
+- Mid-layer prompt injection (optional, harder)
+At Block 4 or Block 8, inject new prompts.
+Need modifying the forward() of Transformer.
+-> Insert small new prompt tokens at intermediate stages. 
+(If you want I can help you code a basic example if you're interested.)
+
+- Prompt initialization from pretrained parameters
+Instead of random, initialize prompts from position embeddings or CLS token.
+
+Gives a better starting point → faster convergence.
