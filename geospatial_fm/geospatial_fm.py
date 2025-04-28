@@ -748,9 +748,11 @@ class TemporalViTEncoderPromptTuning(nn.Module):
         x = self.norm(x)
 
         return tuple([x])
-    
+
+
+
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
-# from mmseg.models.builder import HEADS
+from mmseg.models.builder import HEADS
 
 @HEADS.register_module(force=True)
 class UNetHead(BaseDecodeHead):
@@ -836,7 +838,7 @@ class UNetHead(BaseDecodeHead):
                     padding=1,
                     bias=False,
                 ),
-                nn.BatchNorm2d(channels[i - 1]),
+                nn.BatchNorm2d(channels[i - 1]),  # Fix: Ensure BatchNorm2d matches output channels
                 nn.ReLU(inplace=True),
                 nn.Conv2d(
                     channels[i - 1],
@@ -845,7 +847,7 @@ class UNetHead(BaseDecodeHead):
                     padding=1,
                     bias=False,
                 ),
-                nn.BatchNorm2d(channels[i - 1]),
+                nn.BatchNorm2d(channels[i - 1]),  # Fix: Ensure BatchNorm2d matches output channels
                 nn.ReLU(inplace=True),
             )
             self.decoder_blocks.append(block)
