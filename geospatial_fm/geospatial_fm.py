@@ -649,8 +649,7 @@ class TemporalViTEncoderPromptTuning(nn.Module):
 
         return tuple([x])
 
-
-@HEADS.register_module()
+@HEADS.register_module(force=True)
 class UNetHead(nn.Module):
     """UNet-style segmentation head for MMSegmentation.
 
@@ -676,6 +675,7 @@ class UNetHead(nn.Module):
         super().__init__()
         self.in_channels = in_channels
         self.num_classes = num_classes
+        self.out_channels = num_classes  # Add this line
         self.channels = channels
         self.dropout_ratio = dropout_ratio
         self.norm_cfg = norm_cfg
@@ -697,8 +697,8 @@ class UNetHead(nn.Module):
                 nn.Conv2d(channels[i], channels[i], kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(channels[i]),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(channels[i], channels[i+1], kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(channels[i+1]),
+                nn.Conv2d(channels[i], channels[i + 1], kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(channels[i + 1]),
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d(kernel_size=2, stride=2),
             )
@@ -719,15 +719,27 @@ class UNetHead(nn.Module):
         for i in range(len(channels) - 1, 0, -1):
             block = nn.Sequential(
                 nn.ConvTranspose2d(
-                    channels[i], channels[i-1], kernel_size=2, stride=2, bias=False
+                    channels[i], channels[i - 1], kernel_size=2, stride=2, bias=False
                 ),
-                nn.BatchNorm2d(channels[i-1]),
+                nn.BatchNorm2d(channels[i - 1]),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(channels[i-1] + channels[i-1], channels[i-1], kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(channels[i-1]),
+                nn.Conv2d(
+                    channels[i - 1] + channels[i - 1],
+                    channels[i - 1],
+                    kernel_size=3,
+                    padding=1,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(channels[i - 1]),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(channels[i-1], channels[i-1], kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(channels[i-1]),
+                nn.Conv2d(
+                    channels[i - 1],
+                    channels[i - 1],
+                    kernel_size=3,
+                    padding=1,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(channels[i - 1]),
                 nn.ReLU(inplace=True),
             )
             self.decoder_blocks.append(block)
@@ -770,7 +782,7 @@ class UNetHead(nn.Module):
         # Decoder path with skip connections
         for i, block in enumerate(self.decoder_blocks):
             x = block[0](x)  # Upsample
-            skip = skip_connections[-(i+1)]
+            skip = skip_connections[-(i + 1)]
             x = torch.cat([x, skip], dim=1)  # Concatenate skip connection
             x = block[1:](x)  # Rest of the block
 
@@ -782,6 +794,7 @@ class UNetHead(nn.Module):
     def loss(self, pred, target):
         """Calculate loss."""
         from mmseg.models.losses import CrossEntropyLoss
+
         loss_fn = CrossEntropyLoss(
             use_sigmoid=self.loss_decode.get("use_sigmoid", False),
             loss_weight=self.loss_decode.get("loss_weight", 1.0),
@@ -789,4 +802,4 @@ class UNetHead(nn.Module):
             ignore_index=self.ignore_index,
             avg_non_ignore=self.loss_decode.get("avg_non_ignore", True),
         )
-        return loss_fn(pred, target)  
+        return loss_fn(pred, target)
