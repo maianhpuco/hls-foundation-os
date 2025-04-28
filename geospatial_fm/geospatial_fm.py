@@ -748,15 +748,11 @@ class TemporalViTEncoderPromptTuning(nn.Module):
         x = self.norm(x)
 
         return tuple([x])
+from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 
-from mmseg.models.decode_heads.decode_head import BaseDecodeHead 
-@HEADS.register_module(force=True)
+@HEADS.register_module()
 class UNetHead(BaseDecodeHead):
-    """UNet-style segmentation head for MMSegmentation.
-
-    This head implements a UNet decoder with skip connections, designed to process
-    feature maps from the neck and produce segmentation maps.
-    """
+    """UNet-style segmentation head for MMSegmentation."""
 
     def __init__(
         self,
@@ -772,17 +768,21 @@ class UNetHead(BaseDecodeHead):
             use_sigmoid=False,
             loss_weight=1.0,
         ),
+        **kwargs
     ):
-        super().__init__()
+        super().__init__(
+            in_channels=in_channels,
+            channels=channels[0],  # BaseDecodeHead uses channels[0] as internal channels
+            num_classes=num_classes,
+            dropout_ratio=dropout_ratio,
+            norm_cfg=norm_cfg,
+            align_corners=align_corners,
+            loss_decode=loss_decode,
+            ignore_index=ignore_index,
+            **kwargs
+        )
         self.in_channels = in_channels
-        self.num_classes = num_classes
-        self.out_channels = num_classes  # Required by MMSegmentation
         self.channels = channels
-        self.dropout_ratio = dropout_ratio
-        self.norm_cfg = norm_cfg
-        self.align_corners = align_corners
-        self.ignore_index = ignore_index
-        self.loss_decode = loss_decode
 
         # Initial convolution to reduce input channels
         self.conv_in = nn.Sequential(
@@ -890,31 +890,4 @@ class UNetHead(BaseDecodeHead):
         # Final convolution
         x = self.final_conv(x)
 
-        return x
-
-    def forward_train(self, inputs, img_metas, gt_semantic_seg, train_cfg):
-        """Forward function for training.
-        Args:
-            inputs (list[Tensor]): List of multi-level img features.
-            img_metas (list[dict]): List of image info dicts.
-            gt_semantic_seg (Tensor): Ground truth segmentation maps.
-            train_cfg (dict): Training config.
-        Returns:
-            dict[str, Tensor]: A dictionary of loss components.
-        """
-        seg_logits = self.forward(inputs)
-        losses = self.loss(seg_logits, gt_semantic_seg)
-        return {"decode.loss_seg": losses}
-
-    def loss(self, pred, target):
-        """Calculate loss."""
-        from mmseg.models.losses import CrossEntropyLoss
-
-        loss_fn = CrossEntropyLoss(
-            use_sigmoid=self.loss_decode.get("use_sigmoid", False),
-            loss_weight=self.loss_decode.get("loss_weight", 1.0),
-            class_weight=self.loss_decode.get("class_weight", None),
-            ignore_index=self.ignore_index,
-            avg_non_ignore=self.loss_decode.get("avg_non_ignore", True),
-        )
-        return loss_fn(pred, target)
+        return x 
