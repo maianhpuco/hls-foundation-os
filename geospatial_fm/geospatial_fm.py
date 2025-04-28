@@ -754,7 +754,7 @@ from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.models.builder import HEADS
 
 @HEADS.register_module()
-class UNetHead(BaseDecodeHead):
+class UNetHeadVer2(BaseDecodeHead):
     """UNet-style segmentation head for MMSegmentation.
 
     This head implements a UNet decoder with skip connections, designed to process
