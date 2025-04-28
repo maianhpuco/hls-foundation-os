@@ -269,8 +269,8 @@ model = dict(
         act_cfg=dict(type='ReLU'),
         align_corners=False,
         loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0))
-    ),    
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)
+        ),    
     # decode_head=dict(
     # decode_head=dict(
     #     type="UNetHead",
