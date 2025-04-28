@@ -7,7 +7,7 @@ load_from = None
 resume_from = None
 cudnn_benchmark = True
 
-custom_imports = dict(imports=["geospatial_fm"])
+custom_imports = dict(imports=["geospatial_prompt_tuning"])
 
 
 ### Configs
@@ -230,12 +230,12 @@ workflow = [("train", 1), ("val", 1)]
 norm_cfg = dict(type="BN", requires_grad=True)
 
 ce_weights = [0.3, 0.7]
-
+ 
 model = dict(
     type="TemporalEncoderDecoder",
-    frozen_backbone=False,
+    frozen_backbone=False,  # Ignored due to prompt tuning freezing in TemporalViTEncoder
     backbone=dict(
-        type="TemporalViTEncoder",
+        type="TemporalViTEncoderPromptTuning",
         pretrained=pretrained_weights_path,
         img_size=img_size,
         patch_size=patch_size,
@@ -247,6 +247,7 @@ model = dict(
         num_heads=num_heads,
         mlp_ratio=4.0,
         norm_pix_loss=False,
+        num_prompts=10,  # Prompt tuning with 10 prompt tokens
     ),
     neck=dict(
         type="ConvTransformerTokensToEmbeddingNeck",
@@ -257,22 +258,19 @@ model = dict(
         Wp=img_size // patch_size,
     ),
     decode_head=dict(
-        num_classes=num_classes,
+        type="UNetHead",  # Changed from FCNHead
         in_channels=embed_dim,
-        type="FCNHead",
-        in_index=-1,
-        ignore_index=ignore_index,
-        channels=256,
-        num_convs=1,
-        concat_input=False,
+        num_classes=num_classes,
+        channels=[512, 256, 128, 64],  # UNet decoder channels
         dropout_ratio=0.1,
         norm_cfg=norm_cfg,
         align_corners=False,
+        ignore_index=ignore_index,
         loss_decode=dict(
             type="CrossEntropyLoss",
             use_sigmoid=False,
             loss_weight=1,
-            class_weight=ce_weights,
+            class_weight=ce_weights,  # [0.3, 0.7]
             avg_non_ignore=True,
         ),
     ),
@@ -302,4 +300,78 @@ model = dict(
         stride=(int(tile_size / 2), int(tile_size / 2)),
         crop_size=(tile_size, tile_size),
     ),
-)
+) 
+
+
+# model = dict(
+#     type="TemporalEncoderDecoder",
+#     frozen_backbone=False,
+#     backbone=dict(
+#         type="TemporalViTEncoder",
+#         pretrained=pretrained_weights_path,
+#         img_size=img_size,
+#         patch_size=patch_size,
+#         num_frames=num_frames,
+#         tubelet_size=1,
+#         in_chans=len(bands),
+#         embed_dim=embed_dim,
+#         depth=num_layers,
+#         num_heads=num_heads,
+#         mlp_ratio=4.0,
+#         norm_pix_loss=False,
+#     ),
+#     neck=dict(
+#         type="ConvTransformerTokensToEmbeddingNeck",
+#         embed_dim=num_frames * embed_dim,
+#         output_embed_dim=embed_dim,
+#         drop_cls_token=True,
+#         Hp=img_size // patch_size,
+#         Wp=img_size // patch_size,
+#     ),
+#     decode_head=dict(
+#         num_classes=num_classes,
+#         in_channels=embed_dim,
+#         type="FCNHead",
+#         in_index=-1,
+#         ignore_index=ignore_index,
+#         channels=256,
+#         num_convs=1,
+#         concat_input=False,
+#         dropout_ratio=0.1,
+#         norm_cfg=norm_cfg,
+#         align_corners=False,
+#         loss_decode=dict(
+#             type="CrossEntropyLoss",
+#             use_sigmoid=False,
+#             loss_weight=1,
+#             class_weight=ce_weights,
+#             avg_non_ignore=True,
+#         ),
+#     ),
+#     auxiliary_head=dict(
+#         num_classes=num_classes,
+#         in_channels=embed_dim,
+#         ignore_index=ignore_index,
+#         type="FCNHead",
+#         in_index=-1,
+#         channels=256,
+#         num_convs=2,
+#         concat_input=False,
+#         dropout_ratio=0.1,
+#         norm_cfg=norm_cfg,
+#         align_corners=False,
+#         loss_decode=dict(
+#             type="CrossEntropyLoss",
+#             use_sigmoid=False,
+#             loss_weight=1,
+#             class_weight=ce_weights,
+#             avg_non_ignore=True,
+#         ),
+#     ),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         mode="slide",
+#         stride=(int(tile_size / 2), int(tile_size / 2)),
+#         crop_size=(tile_size, tile_size),
+#     ),
+# )
