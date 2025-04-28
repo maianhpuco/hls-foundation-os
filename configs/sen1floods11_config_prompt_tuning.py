@@ -258,38 +258,25 @@ model = dict(
         Hp=224 // 16,
         Wp=224 // 16,
         num_prompts=10,
-    ),
+    ),   
     decode_head=dict(
-        type='UNetHead',
-        in_channels=512,
-        channels=64,
-        num_classes=19,
+        type="UNetHead",
+        in_channels=768,
+        num_classes=2,
+        # out_channels=2,  # Added previously
+        channels=[512, 256, 128, 64],
         dropout_ratio=0.1,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        act_cfg=dict(type='ReLU'),
+        norm_cfg=dict(type="BN", requires_grad=True),
         align_corners=False,
+        ignore_index=2,
         loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)
-        ),    
-    # decode_head=dict(
-    # decode_head=dict(
-    #     type="UNetHead",
-    #     in_channels=768,
-    #     num_classes=2,
-    #     # out_channels=2,  # Added previously
-    #     channels=[512, 256, 128, 64],
-    #     dropout_ratio=0.1,
-    #     norm_cfg=dict(type="BN", requires_grad=True),
-    #     align_corners=False,
-    #     ignore_index=2,
-    #     loss_decode=dict(
-    #         type="CrossEntropyLoss",
-    #         use_sigmoid=False,
-    #         loss_weight=1,
-    #         class_weight=[0.3, 0.7],
-    #         avg_non_ignore=True,
-    #     ),
-    # ),
+            type="CrossEntropyLoss",
+            use_sigmoid=False,
+            loss_weight=1,
+            class_weight=[0.3, 0.7],
+            avg_non_ignore=True,
+        ),
+    ),
     auxiliary_head=None,
     train_cfg=dict(),
     test_cfg=dict(
