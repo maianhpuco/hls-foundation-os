@@ -3,7 +3,6 @@ from .geospatial_fm import (
 from .geospatial_prompt_tuning import (
     ConvTransformerTokensToEmbeddingNeck,
     TemporalViTEncoderPromptTuning,
-    GeospatialNeck,
     UNetHead
 )
 from .geospatial_pipelines import (

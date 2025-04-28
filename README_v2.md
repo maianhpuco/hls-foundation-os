@@ -2,7 +2,7 @@
 conda activate hls_fresh 
 ``` 
 
-
+pip install -e .
 
 Input Image (multi-band, optional multi-frame)
      ↓
