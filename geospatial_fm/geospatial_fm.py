@@ -753,7 +753,7 @@ class TemporalViTEncoderPromptTuning(nn.Module):
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.models.builder import HEADS
 
-@HEADS.register_module()
+@HEADS.register_module(force=True)
 class UNetHeadVer2(BaseDecodeHead):
     """UNet-style segmentation head for MMSegmentation with explicit channel management."""
 
