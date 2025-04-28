@@ -865,35 +865,35 @@ class UNetHeadVer2(BaseDecodeHead):
     def forward(self, inputs):
         """Forward pass of the UNet head."""
         x = inputs[0]
-        print(f"Input shape: {x.shape}")
+        # print(f"Input shape: {x.shape}")
 
         # Initial conv
         x = self.conv_in(x)
-        print(f"After conv_in: {x.shape}")
+        # print(f"After conv_in: {x.shape}")
 
         # Encoder path
         skips = []
         for idx, block in enumerate(self.encoder_blocks):
             skips.append(x)
             x = block(x)
-            print(f"Encoder block {idx}: skip {skips[-1].shape}, output {x.shape}")
+            # print(f"Encoder block {idx}: skip {skips[-1].shape}, output {x.shape}")
 
         # Bottleneck
         x = self.bottleneck(x)
-        print(f"Bottleneck: {x.shape}")
+        # print(f"Bottleneck: {x.shape}")
 
         # Decoder path
         for idx in range(len(self.decoder_upsamples)):
             x = self.decoder_upsamples[idx](x)  # Upsample first
             skip = skips[-(idx + 1)]
-            print(f"Decoder block {idx}: upsample {x.shape}, skip {skip.shape}")
+            # print(f"Decoder block {idx}: upsample {x.shape}, skip {skip.shape}")
             x = torch.cat([x, skip], dim=1)  # Concatenate
             x = self.decoder_convs[idx](x)  # Then convolve
-            print(f"Decoder block {idx}: after concat and conv {x.shape}")
+            # print(f"Decoder block {idx}: after concat and conv {x.shape}")
 
         # Final conv
         x = self.final_conv(x)
-        print(f"Final output: {x.shape}")
+        # print(f"Final output: {x.shape}")
 
         return x
  
