@@ -749,8 +749,9 @@ class TemporalViTEncoderPromptTuning(nn.Module):
 
         return tuple([x])
 
+from mmseg.models.decode_heads.decode_head import BaseDecodeHead 
 @HEADS.register_module(force=True)
-class UNetHead(nn.Module):
+class UNetHead(BaseDecodeHead):
     """UNet-style segmentation head for MMSegmentation.
 
     This head implements a UNet decoder with skip connections, designed to process
@@ -775,7 +776,7 @@ class UNetHead(nn.Module):
         super().__init__()
         self.in_channels = in_channels
         self.num_classes = num_classes
-        self.out_channels = num_classes  # Add this line
+        self.out_channels = num_classes  # Required by MMSegmentation
         self.channels = channels
         self.dropout_ratio = dropout_ratio
         self.norm_cfg = norm_cfg
@@ -890,6 +891,20 @@ class UNetHead(nn.Module):
         x = self.final_conv(x)
 
         return x
+
+    def forward_train(self, inputs, img_metas, gt_semantic_seg, train_cfg):
+        """Forward function for training.
+        Args:
+            inputs (list[Tensor]): List of multi-level img features.
+            img_metas (list[dict]): List of image info dicts.
+            gt_semantic_seg (Tensor): Ground truth segmentation maps.
+            train_cfg (dict): Training config.
+        Returns:
+            dict[str, Tensor]: A dictionary of loss components.
+        """
+        seg_logits = self.forward(inputs)
+        losses = self.loss(seg_logits, gt_semantic_seg)
+        return {"decode.loss_seg": losses}
 
     def loss(self, pred, target):
         """Calculate loss."""
