@@ -257,7 +257,7 @@ model = dict(
         Hp=img_size // patch_size,
         Wp=img_size // patch_size,
     ),
-    decode_head=decode_head=dict(
+    decode_head=dict(
         type="UNetHead",
         in_channels=768,
         num_classes=2,
