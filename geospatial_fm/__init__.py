@@ -1,10 +1,10 @@
 from .geospatial_fm import (
-    ConvTransformerTokensToEmbeddingNeck, TemporalViTEncoder)
+    ConvTransformerTokensToEmbeddingNeck, TemporalViTEncoder, GeospatialNeck)
 from .geospatial_prompt_tuning import (
     ConvTransformerTokensToEmbeddingNeck,
     TemporalViTEncoderPromptTuning,
-    UNetHead, 
-    GeospatialNeck
+    GeospatialNeck,
+    UNetHead
 )
 from .geospatial_pipelines import (
     TorchRandomCrop,
