@@ -754,7 +754,8 @@ class TemporalViTEncoderPromptTuning(nn.Module):
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.models.builder import HEADS
 
-@HEADS.register_module(force=True)
+
+@HEADS.register_module()
 class UNetHead(BaseDecodeHead):
     """UNet-style segmentation head for MMSegmentation.
 
@@ -833,12 +834,12 @@ class UNetHead(BaseDecodeHead):
                 nn.ReLU(inplace=True),
                 nn.Conv2d(
                     channels[i - 1] * 2,  # Expect 2 * channels[i-1] due to concatenation
-                    channels[i - 1],
+                    channels[i - 1],  # Output channels[i-1]
                     kernel_size=3,
                     padding=1,
                     bias=False,
                 ),
-                nn.BatchNorm2d(channels[i - 1]),  # Fix: Ensure BatchNorm2d matches output channels
+                nn.BatchNorm2d(channels[i - 1]),  # Match output channels
                 nn.ReLU(inplace=True),
                 nn.Conv2d(
                     channels[i - 1],
@@ -847,7 +848,7 @@ class UNetHead(BaseDecodeHead):
                     padding=1,
                     bias=False,
                 ),
-                nn.BatchNorm2d(channels[i - 1]),  # Fix: Ensure BatchNorm2d matches output channels
+                nn.BatchNorm2d(channels[i - 1]),  # Match output channels
                 nn.ReLU(inplace=True),
             )
             self.decoder_blocks.append(block)
