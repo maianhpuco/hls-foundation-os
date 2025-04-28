@@ -4,7 +4,7 @@ from .geospatial_fm import (
     TemporalViTEncoder, 
     GeospatialNeck,
     TemporalViTEncoderPromptTuning,
-    UNetHead
+    UNetHeadVer2
 )
 from .geospatial_pipelines import (
     TorchRandomCrop,
@@ -33,5 +33,5 @@ __all__ = [
     "GeospatialNeck",
     "TorchPermute", 
     "TemporalViTEncoderPromptTuning", 
-    "UNetHead"
+    "UNetHeadVer2"
 ]

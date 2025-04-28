@@ -260,7 +260,7 @@ model = dict(
         num_prompts=10,
     ),   
     decode_head=dict(
-        type="UNetHead",
+        type="UNetHeadVer2",
         in_channels=768,
         num_classes=2,
         # out_channels=2,  # Added previously
