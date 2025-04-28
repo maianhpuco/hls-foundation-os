@@ -7,7 +7,7 @@ load_from = None
 resume_from = None
 cudnn_benchmark = True
 
-custom_imports = dict(imports=["geospatial_prompt_tuning"])
+custom_imports = dict(imports=["geospatial_fm"])
 
 
 ### Configs
