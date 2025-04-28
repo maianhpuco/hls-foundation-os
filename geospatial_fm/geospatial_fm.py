@@ -749,159 +749,9 @@ class TemporalViTEncoderPromptTuning(nn.Module):
 
         return tuple([x])
     
- 
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
-# @HEADS.register_module()
-# class UNetHead(BaseDecodeHead):
-#     """UNet-style segmentation head for MMSegmentation.
+# from mmseg.models.builder import HEADS
 
-#     This head implements a UNet decoder with skip connections, designed to process
-#     feature maps from the neck and produce segmentation maps.
-#     """
-
-#     def __init__(
-#         self,
-#         in_channels: int,
-#         num_classes: int,
-#         channels: list = [512, 256, 128, 64],  # Channels for decoder blocks
-#         dropout_ratio: float = 0.1,
-#         norm_cfg: dict = dict(type="BN", requires_grad=True),
-#         align_corners: bool = False,
-#         ignore_index: int = 2,
-#         loss_decode: dict = dict(
-#             type="CrossEntropyLoss",
-#             use_sigmoid=False,
-#             loss_weight=1.0,
-#         ),
-#     ):
-#         super().__init__(
-#             in_channels=in_channels,
-#             channels=channels[0],  # Assuming channels[0] is the desired value
-#             num_classes=num_classes,
-#             dropout_ratio=dropout_ratio,
-#             norm_cfg=norm_cfg,
-#             align_corners=align_corners,
-#             ignore_index=ignore_index,
-#             loss_decode=loss_decode,
-#         ) 
-#         self.in_channels = in_channels
-#         self.num_classes = num_classes
-#         self.out_channels = num_classes  # Required by MMSegmentation
-#         self.channels = channels
-#         self.dropout_ratio = dropout_ratio
-#         self.norm_cfg = norm_cfg
-#         self.align_corners = align_corners
-#         self.ignore_index = ignore_index
-#         self.loss_decode = loss_decode
-
-#         # Initial convolution to reduce input channels
-#         self.conv_in = nn.Sequential(
-#             nn.Conv2d(in_channels, channels[0], kernel_size=3, padding=1, bias=False),
-#             nn.BatchNorm2d(channels[0]),
-#             nn.ReLU(inplace=True),
-#         )
-
-#         # Encoder (contracting path)
-#         self.encoder_blocks = nn.ModuleList()
-#         for i in range(len(channels) - 1):
-#             block = nn.Sequential(
-#                 nn.Conv2d(channels[i], channels[i], kernel_size=3, padding=1, bias=False),
-#                 nn.BatchNorm2d(channels[i]),
-#                 nn.ReLU(inplace=True),
-#                 nn.Conv2d(channels[i], channels[i + 1], kernel_size=3, padding=1, bias=False),
-#                 nn.BatchNorm2d(channels[i + 1]),
-#                 nn.ReLU(inplace=True),
-#                 nn.MaxPool2d(kernel_size=2, stride=2),
-#             )
-#             self.encoder_blocks.append(block)
-
-#         # Bottom block (bottleneck)
-#         self.bottleneck = nn.Sequential(
-#             nn.Conv2d(channels[-1], channels[-1], kernel_size=3, padding=1, bias=False),
-#             nn.BatchNorm2d(channels[-1]),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(channels[-1], channels[-1], kernel_size=3, padding=1, bias=False),
-#             nn.BatchNorm2d(channels[-1]),
-#             nn.ReLU(inplace=True),
-#         )
-
-#         # Decoder (expansive path) with skip connections
-#         self.decoder_blocks = nn.ModuleList()
-#         for i in range(len(channels) - 1, 0, -1):
-#             block = nn.Sequential(
-#                 nn.ConvTranspose2d(
-#                     channels[i], channels[i - 1], kernel_size=2, stride=2, bias=False
-#                 ),
-#                 nn.BatchNorm2d(channels[i - 1]),
-#                 nn.ReLU(inplace=True),
-#                 nn.Conv2d(
-#                     channels[i - 1] * 2,  # Fix: Expect 2 * channels[i-1] due to concatenation
-#                     channels[i - 1],
-#                     kernel_size=3,
-#                     padding=1,
-#                     bias=False,
-#                 ),
-#                 nn.BatchNorm2d(channels[i - 1]),
-#                 nn.ReLU(inplace=True),
-#                 nn.Conv2d(
-#                     channels[i - 1],
-#                     channels[i - 1],
-#                     kernel_size=3,
-#                     padding=1,
-#                     bias=False,
-#                 ),
-#                 nn.BatchNorm2d(channels[i - 1]),
-#                 nn.ReLU(inplace=True),
-#             )
-#             self.decoder_blocks.append(block)
-
-#         # Final convolution to produce segmentation map
-#         self.final_conv = nn.Sequential(
-#             nn.Dropout2d(dropout_ratio) if dropout_ratio > 0 else nn.Identity(),
-#             nn.Conv2d(channels[0], num_classes, kernel_size=1),
-#         )
-
-#         self.init_weights()
-
-#     def init_weights(self):
-#         """Initialize weights of the head."""
-#         for m in self.modules():
-#             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-#                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-#                 if m.bias is not None:
-#                     nn.init.constant_(m.bias, 0)
-#             elif isinstance(m, nn.BatchNorm2d):
-#                 nn.init.constant_(m.weight, 1)
-#                 nn.init.constant_(m.bias, 0)
-
-#     def forward(self, inputs):
-#         """Forward pass of the UNet head."""
-#         x = inputs[0]  # Input from neck (shape: [B, in_channels, H, W])
-
-#         # Initial convolution
-#         x = self.conv_in(x)
-
-#         # Encoder path (save skip connections)
-#         skip_connections = []
-#         for block in self.encoder_blocks:
-#             skip_connections.append(x)
-#             x = block(x)
-
-#         # Bottleneck
-#         x = self.bottleneck(x)
-
-#         # Decoder path with skip connections
-#         for i, block in enumerate(self.decoder_blocks):
-#             x = block[0](x)  # Upsample
-#             skip = skip_connections[-(i + 1)]
-#             x = torch.cat([x, skip], dim=1)  # Concatenate skip connection
-#             x = block[1:](x)  # Rest of the block
-
-#         # Final convolution
-#         x = self.final_conv(x)
-
-#         return x
-    
 @HEADS.register_module(force=True)
 class UNetHead(BaseDecodeHead):
     """UNet-style segmentation head for MMSegmentation.
@@ -1022,27 +872,35 @@ class UNetHead(BaseDecodeHead):
     def forward(self, inputs):
         """Forward pass of the UNet head."""
         x = inputs[0]  # Input from neck (shape: [B, in_channels, H, W])
+        print(f"Input shape: {x.shape}")  # Debug
 
         # Initial convolution
         x = self.conv_in(x)
+        print(f"After conv_in: {x.shape}")  # Debug
 
         # Encoder path (save skip connections)
         skip_connections = []
-        for block in self.encoder_blocks:
+        for i, block in enumerate(self.encoder_blocks):
             skip_connections.append(x)
             x = block(x)
+            print(f"Encoder block {i} skip: {skip_connections[-1].shape}, output: {x.shape}")  # Debug
 
         # Bottleneck
         x = self.bottleneck(x)
+        print(f"Bottleneck: {x.shape}")  # Debug
 
         # Decoder path with skip connections
         for i, block in enumerate(self.decoder_blocks):
             x = block[0](x)  # Upsample
             skip = skip_connections[-(i + 1)]
+            print(f"Decoder block {i}, upsampled: {x.shape}, skip: {skip.shape}")  # Debug
             x = torch.cat([x, skip], dim=1)  # Concatenate skip connection
+            print(f"Decoder block {i}, after concat: {x.shape}")  # Debug
             x = block[1:](x)  # Rest of the block
+            print(f"Decoder block {i}, output: {x.shape}")  # Debug
 
         # Final convolution
         x = self.final_conv(x)
+        print(f"Final output: {x.shape}")  # Debug
 
-        return x 
+        return x
