@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 from mmcv.runner import load_checkpoint
-from mmseg.models.builder import BACKBONES, NECKS
+from mmseg.models.builder import BACKBONES, NECKS, HEADS 
 from timm.models.layers import to_2tuple
 from timm.models.vision_transformer import Block
 from typing import List
