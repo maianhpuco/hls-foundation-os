@@ -503,7 +503,38 @@ class TemporalViTEncoder(nn.Module):
 
         return tuple([x])
 
+def get_3d_sincos_pos_embed_prefix(embed_dim: int, grid_size: tuple, cls_token: bool = False, num_prompts: int = 0):
+    """
+    grid_size: 3d tuple of grid size: t, h, w
+    num_prompts: number of prompt tokens to include in positional embeddings
+    return:
+    pos_embed: L, D
+    """
+    assert embed_dim % 16 == 0
 
+    t_size, h_size, w_size = grid_size
+
+    w_embed_dim = embed_dim // 16 * 6
+    h_embed_dim = embed_dim // 16 * 6
+    t_embed_dim = embed_dim // 16 * 4
+
+    w_pos_embed = get_1d_sincos_pos_embed_from_grid(w_embed_dim, np.arange(w_size))
+    h_pos_embed = get_1d_sincos_pos_embed_from_grid(h_embed_dim, np.arange(h_size))
+    t_pos_embed = get_1d_sincos_pos_embed_from_grid(t_embed_dim, np.arange(t_size))
+
+    w_pos_embed = np.tile(w_pos_embed, (t_size * h_size, 1))
+    h_pos_embed = np.tile(np.repeat(h_pos_embed, w_size, axis=0), (t_size, 1))
+    t_pos_embed = np.repeat(t_pos_embed, h_size * w_size, axis=0)
+
+    pos_embed = np.concatenate((w_pos_embed, h_pos_embed, t_pos_embed), axis=1)
+
+    # Add positional embeddings for CLS token and prompt tokens
+    prefix_embed = np.zeros([1 + num_prompts, embed_dim])
+    if cls_token:
+        pos_embed = np.concatenate([prefix_embed, pos_embed], axis=0)
+    return pos_embed
+ 
+ 
 @BACKBONES.register_module()
 class TemporalViTEncoderPromptTuning(nn.Module):
     """Encoder from a ViT with capability to take in temporal input and support prompt tuning.
@@ -568,7 +599,7 @@ class TemporalViTEncoderPromptTuning(nn.Module):
         self.initialize_weights()
 
     def initialize_weights(self):
-        pos_embed = get_3d_sincos_pos_embed(
+        pos_embed = get_3d_sincos_pos_embed_prefix(
             self.pos_embed.shape[-1], self.patch_embed.grid_size, cls_token=True, num_prompts=self.num_prompts
         )
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
