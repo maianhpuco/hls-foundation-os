@@ -749,13 +749,14 @@ class TemporalViTEncoderPromptTuning(nn.Module):
 
         return tuple([x])
     
-    
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.models.builder import HEADS
+import torch
+import torch.nn as nn
 
 @HEADS.register_module(force=True)
 class UNetHeadVer2(BaseDecodeHead):
-    """UNet-style segmentation head for MMSegmentation with explicit channel management."""
+    """UNet-style segmentation head with correct decoding."""
 
     def __init__(
         self,
@@ -765,7 +766,7 @@ class UNetHeadVer2(BaseDecodeHead):
         dropout_ratio: float = 0.1,
         norm_cfg: dict = dict(type="BN", requires_grad=True),
         align_corners: bool = False,
-        ignore_index: int = 2,
+        ignore_index: int = 255,
         loss_decode: dict = dict(
             type="CrossEntropyLoss",
             use_sigmoid=False,
@@ -775,7 +776,7 @@ class UNetHeadVer2(BaseDecodeHead):
     ):
         super().__init__(
             in_channels=in_channels,
-            channels=channels[0],  # for base class
+            channels=channels[0],
             num_classes=num_classes,
             dropout_ratio=dropout_ratio,
             norm_cfg=norm_cfg,
@@ -786,7 +787,7 @@ class UNetHeadVer2(BaseDecodeHead):
         )
         self.channels = channels
 
-        # Initial convolution to reduce input channels
+        # Initial projection
         self.conv_in = nn.Sequential(
             nn.Conv2d(in_channels, channels[0], kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(channels[0]),
@@ -817,7 +818,7 @@ class UNetHeadVer2(BaseDecodeHead):
             nn.ReLU(inplace=True),
         )
 
-        # Decoder blocks (properly handling concatenated channels)
+        # Decoder blocks
         self.decoder_blocks = nn.ModuleList()
         for i in range(len(channels) - 1, 0, -1):
             block = nn.Sequential(
@@ -833,7 +834,7 @@ class UNetHeadVer2(BaseDecodeHead):
             )
             self.decoder_blocks.append(block)
 
-        # Final convolution
+        # Final classifier
         self.final_conv = nn.Sequential(
             nn.Dropout2d(dropout_ratio) if dropout_ratio > 0 else nn.Identity(),
             nn.Conv2d(channels[0], num_classes, kernel_size=1),
@@ -842,7 +843,7 @@ class UNetHeadVer2(BaseDecodeHead):
         self.init_weights()
 
     def init_weights(self):
-        """Initialize weights of the head."""
+        """Initialize weights of UNet head."""
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -853,7 +854,7 @@ class UNetHeadVer2(BaseDecodeHead):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, inputs):
-        """Forward pass of the UNet head."""
+        """Forward UNet."""
         x = inputs[0]
         print(f"Input shape: {x.shape}")
 
@@ -861,27 +862,27 @@ class UNetHeadVer2(BaseDecodeHead):
         x = self.conv_in(x)
         print(f"After conv_in: {x.shape}")
 
-        # Encoder path
-        skip_connections = []
-        for i, block in enumerate(self.encoder_blocks):
-            skip_connections.append(x)
+        # Encoder
+        skips = []
+        for idx, block in enumerate(self.encoder_blocks):
+            skips.append(x)
             x = block(x)
-            print(f"Encoder block {i}: skip {skip_connections[-1].shape}, output {x.shape}")
+            print(f"Encoder block {idx}: skip {skips[-1].shape}, output {x.shape}")
 
         # Bottleneck
         x = self.bottleneck(x)
         print(f"Bottleneck: {x.shape}")
 
-        # Decoder path
-        for i, block in enumerate(self.decoder_blocks):
+        # Decoder
+        for idx, block in enumerate(self.decoder_blocks):
             x = block[0](x)  # upsample
-            skip = skip_connections[-(i + 1)]
-            print(f"Decoder block {i}: upsample {x.shape}, skip {skip.shape}")
+            skip = skips[-(idx + 1)]
+            print(f"Decoder block {idx}: upsample {x.shape}, skip {skip.shape}")
             x = torch.cat([x, skip], dim=1)
             x = block[1:](x)  # process after concat
-            print(f"Decoder block {i}: after concat and conv {x.shape}")
+            print(f"Decoder block {idx}: after concat and conv {x.shape}")
 
-        # Final output
+        # Final conv
         x = self.final_conv(x)
         print(f"Final output: {x.shape}")
 
