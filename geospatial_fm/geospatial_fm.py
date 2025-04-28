@@ -750,13 +750,11 @@ class TemporalViTEncoderPromptTuning(nn.Module):
         return tuple([x])
 
 
-
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.models.builder import HEADS
 
-
 @HEADS.register_module()
-class UNetHeadVer2(BaseDecodeHead):
+class UNetHead(BaseDecodeHead):
     """UNet-style segmentation head for MMSegmentation.
 
     This head implements a UNet decoder with skip connections, designed to process
@@ -781,7 +779,7 @@ class UNetHeadVer2(BaseDecodeHead):
     ):
         super().__init__(
             in_channels=in_channels,
-            channels=channels[0],  # BaseDecodeHead uses channels[0] as internal channels
+            channels=channels[0],
             num_classes=num_classes,
             dropout_ratio=dropout_ratio,
             norm_cfg=norm_cfg,
@@ -833,13 +831,13 @@ class UNetHeadVer2(BaseDecodeHead):
                 nn.BatchNorm2d(channels[i - 1]),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(
-                    channels[i - 1] * 2,  # Expect 2 * channels[i-1] due to concatenation
-                    channels[i - 1],  # Output channels[i-1]
+                    channels[i - 1] * 2,  # Concatenated channels
+                    channels[i - 1],  # Output channels
                     kernel_size=3,
                     padding=1,
                     bias=False,
                 ),
-                nn.BatchNorm2d(channels[i - 1]),  # Match output channels
+                nn.BatchNorm2d(channels[i - 1]),  # Match Conv2d output
                 nn.ReLU(inplace=True),
                 nn.Conv2d(
                     channels[i - 1],
@@ -848,9 +846,10 @@ class UNetHeadVer2(BaseDecodeHead):
                     padding=1,
                     bias=False,
                 ),
-                nn.BatchNorm2d(channels[i - 1]),  # Match output channels
+                nn.BatchNorm2d(channels[i - 1]),  # Match Conv2d output
                 nn.ReLU(inplace=True),
             )
+            print(f"Decoder block i={i}, Conv2d in_channels={channels[i-1]*2}, out_channels={channels[i-1]}, BatchNorm2d channels={channels[i-1]}")
             self.decoder_blocks.append(block)
 
         # Final convolution to produce segmentation map
@@ -875,35 +874,35 @@ class UNetHeadVer2(BaseDecodeHead):
     def forward(self, inputs):
         """Forward pass of the UNet head."""
         x = inputs[0]  # Input from neck (shape: [B, in_channels, H, W])
-        print(f"Input shape: {x.shape}")  # Debug
+        print(f"Input shape: {x.shape}")
 
         # Initial convolution
         x = self.conv_in(x)
-        print(f"After conv_in: {x.shape}")  # Debug
+        print(f"After conv_in: {x.shape}")
 
         # Encoder path (save skip connections)
         skip_connections = []
         for i, block in enumerate(self.encoder_blocks):
             skip_connections.append(x)
             x = block(x)
-            print(f"Encoder block {i} skip: {skip_connections[-1].shape}, output: {x.shape}")  # Debug
+            print(f"Encoder block {i} skip: {skip_connections[-1].shape}, output: {x.shape}")
 
         # Bottleneck
         x = self.bottleneck(x)
-        print(f"Bottleneck: {x.shape}")  # Debug
+        print(f"Bottleneck: {x.shape}")
 
         # Decoder path with skip connections
         for i, block in enumerate(self.decoder_blocks):
             x = block[0](x)  # Upsample
             skip = skip_connections[-(i + 1)]
-            print(f"Decoder block {i}, upsampled: {x.shape}, skip: {skip.shape}")  # Debug
-            x = torch.cat([x, skip], dim=1)  # Concatenate skip connection
-            print(f"Decoder block {i}, after concat: {x.shape}")  # Debug
+            print(f"Decoder block {i}, upsampled: {x.shape}, skip: {skip.shape}")
+            x = torch.cat([x, skip], dim=1)
+            print(f"Decoder block {i}, after concat: {x.shape}")
             x = block[1:](x)  # Rest of the block
-            print(f"Decoder block {i}, output: {x.shape}")  # Debug
+            print(f"Decoder block {i}, output: {x.shape}")
 
         # Final convolution
         x = self.final_conv(x)
-        print(f"Final output: {x.shape}")  # Debug
+        print(f"Final output: {x.shape}")
 
-        return x
+        return x 
