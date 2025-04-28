@@ -750,8 +750,6 @@ class TemporalViTEncoderPromptTuning(nn.Module):
         return tuple([x])
 
 
-import torch
-import torch.nn as nn
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.models.builder import HEADS
 
@@ -798,15 +796,42 @@ class UNetHeadVer2(BaseDecodeHead):
         # Encoder blocks
         self.encoder_blocks = nn.ModuleList()
         for i in range(len(channels) - 1):
+            # Assuming channels[i - 1] is C
             block = nn.Sequential(
-                nn.Conv2d(channels[i], channels[i], kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(channels[i]),
+                nn.ConvTranspose2d(
+                    channels[i], channels[i - 1], kernel_size=2, stride=2, bias=False
+                ),
+                nn.BatchNorm2d(channels[i - 1]),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(channels[i], channels[i + 1], kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(channels[i + 1]),
+                nn.Conv2d(
+                    channels[i - 1] * 2,  # Because of concatenation
+                    channels[i - 1],
+                    kernel_size=3,
+                    padding=1,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(channels[i - 1]),
                 nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(
+                    channels[i - 1],
+                    channels[i - 1],
+                    kernel_size=3,
+                    padding=1,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(channels[i - 1]),
+                nn.ReLU(inplace=True),
             )
+ 
+            # block = nn.Sequential(
+            #     nn.Conv2d(channels[i], channels[i], kernel_size=3, padding=1, bias=False),
+            #     nn.BatchNorm2d(channels[i]),
+            #     nn.ReLU(inplace=True),
+            #     nn.Conv2d(channels[i], channels[i + 1], kernel_size=3, padding=1, bias=False),
+            #     nn.BatchNorm2d(channels[i + 1]),
+            #     nn.ReLU(inplace=True),
+            #     nn.MaxPool2d(kernel_size=2, stride=2),
+            # )
             self.encoder_blocks.append(block)
 
         # Bottleneck
