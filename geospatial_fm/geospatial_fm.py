@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 from mmcv.runner import load_checkpoint
-from mmseg.models.builder import BACKBONES, NECKS, HEADS 
+from mmseg.models.builder import BACKBONES, NECKS, HEADS
 from timm.models.layers import to_2tuple
 from timm.models.vision_transformer import Block
 from typing import List
@@ -750,7 +750,7 @@ class TemporalViTEncoderPromptTuning(nn.Module):
         return tuple([x])
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 @HEADS.register_module()
-class UNetHead(nn.Module):
+class UNetHead(BaseDecodeHead):
     """UNet-style segmentation head for MMSegmentation.
 
     This head implements a UNet decoder with skip connections, designed to process
