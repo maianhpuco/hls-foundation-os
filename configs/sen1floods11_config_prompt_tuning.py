@@ -263,7 +263,7 @@ model = dict(
         type="UNetHead",
         in_channels=768,
         num_classes=2,
-        out_channels=2,  # Added previously
+        # out_channels=2,  # Added previously
         channels=[512, 256, 128, 64],
         dropout_ratio=0.1,
         norm_cfg=dict(type="BN", requires_grad=True),
