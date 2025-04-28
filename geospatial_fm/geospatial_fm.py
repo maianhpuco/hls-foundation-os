@@ -377,7 +377,107 @@ class ConvTransformerTokensToEmbeddingNeck(nn.Module):
         out = tuple([x])
 
         return out
+    
+@NECKS.register_module()
+class ConvTransformerTokensToEmbeddingNeck(nn.Module):
+    """
+    Neck that transforms the token-based output of transformer into a single embedding suitable for processing with standard layers.
+    Performs 4 ConvTranspose2d operations on the rearranged input with kernel_size=2 and stride=2
+    """
 
+    def __init__(
+        self,
+        embed_dim: int,
+        output_embed_dim: int,
+        Hp: int = 14,
+        Wp: int = 14,
+        drop_cls_token: bool = True,
+        num_prompts: int = 0,  # Add num_prompts parameter
+    ):
+        super().__init__()
+        self.drop_cls_token = drop_cls_token
+        self.num_prompts = num_prompts  # Store num_prompts
+        self.Hp = Hp
+        self.Wp = Wp
+        self.H_out = Hp
+        self.W_out = Wp
+
+        kernel_size = 2
+        stride = 2
+        dilation = 1
+        padding = 0
+        output_padding = 0
+        for _ in range(4):
+            self.H_out = _convTranspose2dOutput(
+                self.H_out, stride, padding, dilation, kernel_size, output_padding
+            )
+            self.W_out = _convTranspose2dOutput(
+                self.W_out, stride, padding, dilation, kernel_size, output_padding
+            )
+
+        self.embed_dim = embed_dim
+        self.output_embed_dim = output_embed_dim
+        self.fpn1 = nn.Sequential(
+            nn.ConvTranspose2d(
+                self.embed_dim,
+                self.output_embed_dim,
+                kernel_size=kernel_size,
+                stride=stride,
+                dilation=dilation,
+                padding=padding,
+                output_padding=output_padding,
+            ),
+            Norm2d(self.output_embed_dim),
+            nn.GELU(),
+            nn.ConvTranspose2d(
+                self.output_embed_dim,
+                self.output_embed_dim,
+                kernel_size=kernel_size,
+                stride=stride,
+                dilation=dilation,
+                padding=padding,
+                output_padding=output_padding,
+            ),
+        )
+        self.fpn2 = nn.Sequential(
+            nn.ConvTranspose2d(
+                self.output_embed_dim,
+                self.output_embed_dim,
+                kernel_size=kernel_size,
+                stride=stride,
+                dilation=dilation,
+                padding=padding,
+                output_padding=output_padding,
+            ),
+            Norm2d(self.output_embed_dim),
+            nn.GELU(),
+            nn.ConvTranspose2d(
+                self.output_embed_dim,
+                self.output_embed_dim,
+                kernel_size=kernel_size,
+                stride=stride,
+                dilation=dilation,
+                padding=padding,
+                output_padding=output_padding,
+            ),
+        )
+
+    def forward(self, x):
+        x = x[0]  # Input is a tuple, take the first element
+        if self.drop_cls_token:
+            x = x[:, 1:]  # Drop CLS token
+        # Select only the patch tokens, skipping prompt tokens
+        num_patch_tokens = self.Hp * self.Wp
+        x = x[:, -num_patch_tokens:]  # Take the last Hp*Wp tokens
+        x = x.permute(0, 2, 1).reshape(x.shape[0], self.embed_dim, self.Hp, self.Wp)
+
+        x = self.fpn1(x)
+        x = self.fpn2(x)
+
+        x = x.reshape((-1, self.output_embed_dim, self.H_out, self.W_out))
+
+        out = tuple([x])
+        return out
 
 @BACKBONES.register_module()
 class TemporalViTEncoder(nn.Module):

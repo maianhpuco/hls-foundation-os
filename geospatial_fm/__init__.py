@@ -1,5 +1,6 @@
 from .geospatial_fm import (
-    ConvTransformerTokensToEmbeddingNeck, 
+    ConvTransformerTokensToEmbeddingNeck,
+    ConvTransformerTokensToEmbeddingNeckPromptTuning, 
     TemporalViTEncoder, 
     GeospatialNeck,
     TemporalViTEncoderPromptTuning,
@@ -21,6 +22,7 @@ __all__ = [
     "GeospatialDataset",
     "TemporalViTEncoder",
     "ConvTransformerTokensToEmbeddingNeck",
+    ConvTransformerTokensToEmbeddingNeckPromptTuning,
     "LoadGeospatialAnnotations",
     "LoadGeospatialImageFromFile",
     "TorchRandomCrop",
