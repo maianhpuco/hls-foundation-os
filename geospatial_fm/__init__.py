@@ -1,7 +1,7 @@
 from .geospatial_fm import (
-    ConvTransformerTokensToEmbeddingNeck, TemporalViTEncoder, GeospatialNeck)
-from .geospatial_prompt_tuning import (
-    ConvTransformerTokensToEmbeddingNeck,
+    ConvTransformerTokensToEmbeddingNeck, 
+    TemporalViTEncoder, 
+    GeospatialNeck,
     TemporalViTEncoderPromptTuning,
     UNetHead
 )
