@@ -22,7 +22,7 @@ __all__ = [
     "GeospatialDataset",
     "TemporalViTEncoder",
     "ConvTransformerTokensToEmbeddingNeck",
-    ConvTransformerTokensToEmbeddingNeckPromptTuning,
+    "ConvTransformerTokensToEmbeddingNeckPromptTuning",
     "LoadGeospatialAnnotations",
     "LoadGeospatialImageFromFile",
     "TorchRandomCrop",

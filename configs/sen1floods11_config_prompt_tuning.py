@@ -250,7 +250,7 @@ model = dict(
         num_prompts=10,  # Prompt tuning with 10 prompt tokens
     ),
     neck=dict(
-        type="ConvTransformerTokensToEmbeddingNeck",
+        type="ConvTransformerTokensToEmbeddingNeckPromptTuning",
         embed_dim=num_frames * embed_dim,
         output_embed_dim=embed_dim,
         drop_cls_token=True,

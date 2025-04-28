@@ -379,7 +379,7 @@ class ConvTransformerTokensToEmbeddingNeck(nn.Module):
         return out
     
 @NECKS.register_module()
-class ConvTransformerTokensToEmbeddingNeck(nn.Module):
+class ConvTransformerTokensToEmbeddingNeckPromptTuning(nn.Module):
     """
     Neck that transforms the token-based output of transformer into a single embedding suitable for processing with standard layers.
     Performs 4 ConvTranspose2d operations on the rearranged input with kernel_size=2 and stride=2
