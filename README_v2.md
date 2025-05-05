@@ -1,6 +1,9 @@
 ```
 conda activate hls_fresh 
-``` 
+```
+
+mim train mmseg /path/to/config.py --cfg-options num_prompts=16
+
 
 pip install -e .
 

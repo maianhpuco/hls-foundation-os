@@ -1,5 +1,9 @@
 import os
 
+
+num_prompts = 16
+experiment = "nprompt_16"
+
 # base options
 dist_params = dict(backend="nccl")
 log_level = "INFO"
@@ -8,7 +12,6 @@ resume_from = None
 cudnn_benchmark = True
 
 custom_imports = dict(imports=["geospatial_fm"])
-
 
 ### Configs
 # Data
@@ -61,11 +64,11 @@ num_heads = 12
 tubelet_size = 1
 
 # TRAINING
-epochs = 10 
+epochs = 5
 eval_epoch_interval = 5
 
 # TO BE DEFINED BY USER: Save directory
-experiment = "maianh_exp_01"
+
 project_dir = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os"
 work_dir = os.path.join(project_dir, experiment)
 save_path = work_dir
@@ -248,7 +251,7 @@ model = dict(
         num_heads=12,
         mlp_ratio=4.0,
         norm_pix_loss=False,
-        num_prompts=10,
+        num_prompts=num_prompts,
     ),
     neck=dict(
         type="ConvTransformerTokensToEmbeddingNeckPromptTuning",
@@ -257,7 +260,7 @@ model = dict(
         drop_cls_token=True,
         Hp=224 // 16,
         Wp=224 // 16,
-        num_prompts=10,
+        num_prompts=num_prompts,
     ),   
     decode_head=dict(
         type="UNetHeadVer2",
