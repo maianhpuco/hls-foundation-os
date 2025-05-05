@@ -1,5 +1,4 @@
 import os
-import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd  
@@ -7,8 +6,6 @@ import rasterio
 import yaml
 
 from mmcv import Config
-from mmseg.models import build_segmentor
-from mmseg.datasets.pipelines import Compose, LoadImageFromFile
 from mmseg.apis import init_segmentor
 from model_inference import inference_segmentor, process_test_pipeline
 from huggingface_hub import hf_hub_download
@@ -57,7 +54,7 @@ if __name__ == '__main__':
     REPO_ROOT_DIR = '/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os'
     # Define model variants to compare
     ckpt_variants = {
-        "prompt08": f"{REPO_ROOT_DIR}/nprompt_08/latest.pth",
+        "prompt08": f"{REPO_ROOT_DIR}/nprompt_08/best_mIoU_epoch_85.pth",
         "prompt16": f"{REPO_ROOT_DIR}/nprompt_16/latest.pth",
         "prompt32": f"{REPO_ROOT_DIR}/nprompt_32/latest.pth",
     }
