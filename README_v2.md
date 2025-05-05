@@ -83,3 +83,11 @@ Need modifying the forward() of Transformer.
 Instead of random, initialize prompts from position embeddings or CLS token.
 
 Gives a better starting point → faster convergence.
+
+
+```
+/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/data_splits/sen1floods11/train_10.txt
+/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/data_splits/sen1floods11/train_25.txt
+/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/data_splits/sen1floods11/train_50.txt
+/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/data_splits/sen1floods11/train_75.txt
+```

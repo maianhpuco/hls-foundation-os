@@ -64,7 +64,7 @@ num_heads = 12
 tubelet_size = 1
 
 # TRAINING
-epochs = 5
+epochs = 100
 eval_epoch_interval = 5
 
 # TO BE DEFINED BY USER: Save directory
