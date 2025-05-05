@@ -6,3 +6,9 @@ infer:
 		--checkpoint maianh_exp_01/epoch_2.pth \
 		--eval mIoU \
 		--launcher none
+
+infer_08: 
+	mim test mmseg configs/sen1floods11_config_prompt_tuning_08.py \
+		--checkpoint nprompt_08/latest.pth \
+		--eval mIoU mDice \
+		--launcher none \
