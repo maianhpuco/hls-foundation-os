@@ -4,7 +4,7 @@ import random
 random.seed(42)
 
 # Read the original train split file
-with open("train_split.txt", "r") as f:
+with open("/data_splits/sen1floods11/train_split.txt", "r") as f:
     lines = f.readlines()
 
 # Shuffle the lines
