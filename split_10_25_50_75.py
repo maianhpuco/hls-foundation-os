@@ -4,7 +4,7 @@ import random
 random.seed(42)
 
 # Read the original train split file
-with open("/data_splits/sen1floods11/train_split.txt", "r") as f:
+with open("data_splits/sen1floods11/train_split.txt", "r") as f:
     lines = f.readlines()
 
 # Shuffle the lines
@@ -17,7 +17,7 @@ percentages = [10, 25, 50, 75]
 for pct in percentages:
     k = int(len(lines) * pct / 100)
     subset = lines[:k]
-    output_file = f"/data_splits/sen1floods11/train_{pct}.txt"
+    output_file = f"data_splits/sen1floods11/train_{pct}.txt"
     with open(output_file, "w") as f_out:
         f_out.writelines(subset)
     print(f"Created {output_file} with {k} entries.")
