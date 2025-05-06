@@ -168,6 +168,14 @@ def custom_inference_segmentor(model, data):
                 "flip_direction": metas.get("flip_direction", None)
             }
             metas_list = [metas_cleaned]
+            # Validate metas_list structure
+            if not isinstance(metas_list, list):
+                raise ValueError(f"metas_list is not a list: {type(metas_list)}")
+            for meta in metas_list:
+                if not isinstance(meta, dict):
+                    raise ValueError(f"meta in metas_list is not a dict: type={type(meta)}, content={meta}")
+                if "ori_shape" not in meta:
+                    raise ValueError(f"meta missing ori_shape: {meta}")
             print(f"Passing to model: img_shape={imgs.shape}, metas_list={metas_list}")
             if isinstance(imgs, DataContainer):
                 imgs = imgs.data
@@ -261,6 +269,11 @@ img_list = df.iloc[:, 0].tolist()
 mask_list = df.iloc[:, 1].tolist()
 img_dir = cfg.img_dir
 ann_dir = cfg.ann_dir
+
+# Temporary workaround: Skip problematic images
+skip_images = ["Somalia_60129_S1Hand.tif", "USA_504150_S1Hand.tif", "USA_758178_S1Hand.tif"]
+img_list = [img for img in img_list if img not in skip_images]
+mask_list = [mask for img, mask in zip(df.iloc[:, 0].tolist(), mask_list) if img not in skip_images]
 
 # --- Run Inference ---
 for idx, img_name in enumerate(img_list):
