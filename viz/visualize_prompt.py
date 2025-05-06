@@ -153,9 +153,8 @@ test_pipeline = [
     dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
     dict(type="CustomBandsExtract", bands=cfg.bands),
     dict(type="ConstantMultiply", constant=cfg.constant),
-    dict(type="ToTensor", keys=["img"]),
-    dict(type="TorchPermute", keys=["img"], order=(2, 0, 1)),
     dict(type="Normalize", **cfg.img_norm_cfg),
+    dict(type="ToTensor", keys=["img"]),
     dict(type="Reshape", keys=["img"], new_shape=(len(cfg.bands), cfg.num_frames, -1, -1), look_up={"2": 1, "3": 2}),
     dict(type="CastTensor", keys=["img"], new_type="torch.FloatTensor"),
     dict(type="Collect", keys=["img"], meta_keys=[
@@ -185,12 +184,13 @@ for idx, img_name in enumerate(img_list):
 
     try:
         data = {"img_info": {"filename": img_path}}
-        # Debug shape after each transform
+        # Debug shape and type after each transform
         for i, transform in enumerate(test_pipeline.transforms):
             data = transform(data)
             if "img" in data:
                 shape = data["img"].shape if isinstance(data["img"], (torch.Tensor, np.ndarray)) else "Not a tensor/array"
-                print(f"Shape after transform {i} ({transform.__class__.__name__}): {shape}")
+                dtype = type(data["img"]).__name__
+                print(f"Shape after transform {i} ({transform.__class__.__name__}): {shape}, Type: {dtype}")
         print(f"Final pipeline keys: {list(data.keys())}")
         print(f"Final image shape: {data['img'].shape if isinstance(data['img'], torch.Tensor) else 'Not a tensor'}")
     except Exception as e:
