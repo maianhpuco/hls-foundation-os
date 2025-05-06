@@ -76,13 +76,13 @@ class CustomBandsExtract:
 
 # --- Custom ConstantMultiply ---
 @PIPELINES.register_module()
-class ConstantMultiply:
+class CustomConstantMultiply:
     def __init__(self, constant):
         self.constant = constant
 
     def __call__(self, results):
         img = results["img"]
-        print(f"ConstantMultiply: constant={self.constant}, constant_shape={np.shape(self.constant) if isinstance(self.constant, np.ndarray) else 'scalar'}, img_shape={img.shape}")
+        print(f"CustomConstantMultiply: constant={self.constant}, constant_shape={np.shape(self.constant) if isinstance(self.constant, np.ndarray) else 'scalar'}, img_shape={img.shape}")
         
         # Convert constant to NumPy array if scalar
         if np.isscalar(self.constant):
@@ -187,7 +187,7 @@ resize_shape = (224, 224)
 test_pipeline = [
     dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
     dict(type="CustomBandsExtract", bands=cfg.bands),
-    dict(type="ConstantMultiply", constant=cfg.constant),
+    dict(type="CustomConstantMultiply", constant=cfg.constant),
     dict(type="Normalize", **cfg.img_norm_cfg),
     dict(type="ToTensor", keys=["img"]),
     dict(type="Reshape", keys=["img"], new_shape=(len(cfg.bands), cfg.num_frames, -1, -1), look_up={"2": 1, "3": 2}),
