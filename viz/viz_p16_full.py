@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
         ax[3].imshow(raster_for_visualization)
         ax[3].imshow(result[0], cmap="jet", alpha=0.3, norm=norm)
-        ax[3].set_title("Overlay", fontsize=)
+        ax[3].set_title("Overlay", fontsize=1)
 
         for subplot in ax:
             subplot.axis('off')
