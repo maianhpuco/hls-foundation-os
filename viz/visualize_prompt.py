@@ -9,30 +9,38 @@ from mmseg.apis import init_segmentor
 from mmseg.datasets.pipelines import Compose
 from mmseg.datasets.builder import PIPELINES
 from mmcv.parallel import DataContainer
+import cv2
 import warnings
 
 warnings.filterwarnings("ignore")
 
-# Register custom pipeline
+# --- Custom Raster Loader ---
 @PIPELINES.register_module()
 class LoadImageWithRasterio:
-    def __init__(self, to_float32=False, nodata=None, nodata_replace=0):
+    def __init__(self, to_float32=False, nodata=None, nodata_replace=0, resize=(224, 224)):
         self.to_float32 = to_float32
         self.nodata = nodata
         self.nodata_replace = nodata_replace
+        self.resize = resize
 
     def __call__(self, results):
         filename = results["img_info"]["filename"]
         with rasterio.open(filename) as src:
-            img = src.read()
+            img = src.read()  # (C, H, W)
+
         if self.nodata is not None:
             img = np.where(img == self.nodata, self.nodata_replace, img)
         if self.to_float32:
             img = img.astype(np.float32)
-        results["img"] = img
-        results["img_shape"] = img.shape[1:]
-        results["ori_shape"] = img.shape[1:]
-        results["pad_shape"] = img.shape[1:]  # Patch: add required fields
+
+        # Resize to (C, 224, 224)
+        img_resized = np.stack([cv2.resize(band, self.resize, interpolation=cv2.INTER_LINEAR)
+                                for band in img])
+
+        results["img"] = img_resized
+        results["img_shape"] = img_resized.shape[1:]
+        results["ori_shape"] = img_resized.shape[1:]
+        results["pad_shape"] = img_resized.shape[1:]
         results["scale_factor"] = 1.0
         results["flip"] = False
         results["flip_direction"] = None
@@ -40,7 +48,7 @@ class LoadImageWithRasterio:
         results["ori_filename"] = os.path.basename(filename)
         return results
 
-# Inference function
+# --- Inference Helper ---
 def custom_inference_segmentor(model, data):
     model.eval()
     with torch.no_grad():
@@ -56,7 +64,7 @@ def custom_inference_segmentor(model, data):
         result = model(return_loss=False, img=imgs, img_metas=[metas])
     return result
 
-# Visualization
+# --- Visualization Helpers ---
 def enhance_raster_for_visualization(raster):
     NO_DATA_FLOAT = 0.0001
     PERCENTILES = (0.1, 99.9)
@@ -74,7 +82,6 @@ def enhance_raster_for_visualization(raster):
     rgb = np.moveaxis(np.stack(channels), 0, -1)[..., :3][..., ::-1]
     return rgb
 
-# Color map
 def apply_colormap(mask, palette):
     h, w = mask.shape
     colored = np.zeros((h, w, 3), dtype=np.uint8)
@@ -82,23 +89,23 @@ def apply_colormap(mask, palette):
         colored[mask == cls] = color
     return colored
 
-# Config
+# --- Config Setup ---
 config_path = "configs/sen1floods11_config_prompt_tuning_16.py"
 checkpoint_path = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_16/best_mIoU_epoch_80.pth"
-output_dir = "./vis/outputs/nprompt_16"
+output_dir = "./vis/outputs/nprompt_16_resized"
 split_csv_path = "/project/hnguyen2/mvu9/datasets/SEN1Floods11/v1.1/splits/flood_handlabeled/flood_test_data.csv"
 os.makedirs(output_dir, exist_ok=True)
 
-# Load
 cfg = Config.fromfile(config_path)
 model = init_segmentor(cfg, checkpoint_path, device="cuda" if torch.cuda.is_available() else "cpu")
 
 bands = cfg.bands
 rgb_bands = [bands.index(i) for i in [1, 2, 3]]
+resize_shape = (224, 224)
 
-# Pipeline
+# --- Define Pipeline ---
 test_pipeline = Compose([
-    dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace),
+    dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
     dict(type="BandsExtract", bands=cfg.bands),
     dict(type="ConstantMultiply", constant=cfg.constant),
     dict(type="ToTensor", keys=["img"]),
@@ -112,18 +119,17 @@ test_pipeline = Compose([
     ]),
 ])
 
-# Palette
+# --- Colormap ---
 palette = {0: [0, 0, 255], 1: [255, 0, 0], 2: [128, 128, 128]}
 
-# Data
+# --- Load Dataset ---
 df = pd.read_csv(split_csv_path)
 img_list = df.iloc[:, 0].tolist()
 mask_list = df.iloc[:, 1].tolist()
-
 img_dir = cfg.img_dir
 ann_dir = cfg.ann_dir
 
-# Run
+# --- Run Inference ---
 for idx, img_name in enumerate(img_list):
     print(f"\n--- {idx} - {img_name} ---")
     mask_name = mask_list[idx]
@@ -143,6 +149,7 @@ for idx, img_name in enumerate(img_list):
         with rasterio.open(img_path) as src:
             input_data = src.read()
         input_data = np.where(input_data == cfg.image_nodata, cfg.image_nodata_replace, input_data)
+        input_data = np.stack([cv2.resize(b, resize_shape) for b in input_data])
         rgb_image = enhance_raster_for_visualization(input_data[rgb_bands])
     except Exception as e:
         print(f"Error loading image {img_name_s2}: {e}")
@@ -151,6 +158,7 @@ for idx, img_name in enumerate(img_list):
     try:
         with rasterio.open(label_path) as src:
             gt_mask = src.read(1)
+        gt_mask = cv2.resize(gt_mask, resize_shape, interpolation=cv2.INTER_NEAREST)
     except Exception as e:
         print(f"Error loading label {mask_name}: {e}")
         continue
