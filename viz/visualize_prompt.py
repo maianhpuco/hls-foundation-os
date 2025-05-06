@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 import pandas as pd
 from mmcv import Config
-from mmseg.apis import init_segmentor, inference_segmentor
+from mmseg.apis import init_segmentor
 from mmseg.datasets.pipelines import Compose
 from mmseg.datasets.builder import PIPELINES
 import warnings
@@ -21,8 +21,11 @@ class LoadImageWithRasterio:
 
     def __call__(self, results):
         filename = results["img_info"]["filename"]
-        with rasterio.open(filename) as src:
-            img = src.read()  # Shape: (C, H, W)
+        try:
+            with rasterio.open(filename) as src:
+                img = src.read()  # Shape: (C, H, W)
+        except Exception as e:
+            raise Exception(f"Failed to open {filename}: {e}")
         if self.nodata is not None:
             img = np.where(img == self.nodata, self.nodata_replace, img)
         if self.to_float32:
@@ -30,11 +33,22 @@ class LoadImageWithRasterio:
         results["img"] = img
         results["img_shape"] = img.shape[1:]  # (H, W)
         results["ori_shape"] = img.shape[1:]  # (H, W)
-        results["filename"] = filename  # Explicitly set filename
-        results["ori_filename"] = os.path.basename(filename)  # Set ori_filename
+        results["filename"] = filename
+        results["ori_filename"] = os.path.basename(filename)
         return results
 
-# Visualization enhancement (adapted from your code)
+# Custom inference function to handle preprocessed dictionary
+def custom_inference_segmentor(model, data):
+    model.eval()
+    with torch.no_grad():
+        img = data["img"].unsqueeze(0)  # Add batch dimension: [1, C, H, W]
+        img_metas = [data["img_metas"]]
+        if torch.cuda.is_available():
+            img = img.cuda()
+        result = model(return_loss=False, img=img, img_metas=img_metas)
+    return result
+
+# Visualization enhancement
 NO_DATA = -9999
 NO_DATA_FLOAT = 0.0001
 PERCENTILES = (0.1, 99.9)
@@ -52,7 +66,7 @@ def enhance_raster_for_visualization(raster, ref_img=None):
         clipped = np.clip(normalized_raster, 0, 1)
         channels.append(clipped)
     clipped = np.stack(channels)
-    channels_last = np.moveaxis(clipped, 0, -1)[..., :3]  # Select RGB bands (0, 1, 2)
+    channels_last = np.moveaxis(clipped, 0, -1)[..., :3]  # Select RGB bands
     rgb = channels_last[..., ::-1]  # BGR to RGB
     return rgb
 
@@ -140,28 +154,36 @@ for idx, img_name in enumerate(img_list):
     data = {"img_info": {"filename": img_path}}
     try:
         data = test_pipeline(data)
-        # Debug: Print results keys before CollectTestList
         print(f"Results keys after pipeline for {img_name}: {list(data.keys())}")
+        print(f"Image shape: {data['img'].shape}")
     except Exception as e:
         print(f"Error processing {img_name}: {e}")
         continue
 
     # Run inference
     try:
-        result = inference_segmentor(model, [data])
+        result = custom_inference_segmentor(model, data)
         pred_mask = result[0]  # Shape: (H, W)
     except Exception as e:
         print(f"Error inferring {img_name}: {e}")
         continue
 
     # Load input image and ground truth for visualization
-    with rasterio.open(img_path) as src:
-        input_data = src.read()  # Shape: (C, H, W)
-    input_data = np.where(input_data == cfg.image_nodata, cfg.image_nodata_replace, input_data)
-    raster_vis = enhance_raster_for_visualization(input_data[rgb_bands])
+    try:
+        with rasterio.open(img_path) as src:
+            input_data = src.read()  # Shape: (C, H, W)
+        input_data = np.where(input_data == cfg.image_nodata, cfg.image_nodata_replace, input_data)
+        raster_vis = enhance_raster_for_visualization(input_data[rgb_bands])
+    except Exception as e:
+        print(f"Error loading image {img_name} for visualization: {e}")
+        continue
 
-    with rasterio.open(label_path) as src:
-        label_data = src.read(1)  # Shape: (H, W)
+    try:
+        with rasterio.open(label_path) as src:
+            label_data = src.read(1)  # Shape: (H, W)
+    except Exception as e:
+        print(f"Error loading label {mask_name} for visualization: {e}")
+        continue
 
     # Apply colormap to ground truth and predicted mask
     gt_colored = apply_colormap(label_data, palette, ignore_index)
