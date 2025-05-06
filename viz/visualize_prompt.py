@@ -149,10 +149,10 @@ for idx, img_name in enumerate(img_list):
     try:
         data = {"img_info": {"filename": img_path}}
         # Debug shape after LoadImageWithRasterio
-        data = test_pipeline[0](data)
+        data = test_pipeline.transforms[0](data)
         print(f"Shape after LoadImageWithRasterio: {data['img'].shape}")
         # Debug shape after BandsExtract
-        data = test_pipeline[1](data)
+        data = test_pipeline.transforms[1](data)
         print(f"Shape after BandsExtract: {data['img'].shape}")
         # Complete pipeline
         data = test_pipeline(data)
