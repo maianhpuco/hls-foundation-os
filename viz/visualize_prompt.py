@@ -25,8 +25,16 @@ class LoadImageWithRasterio:
 
     def __call__(self, results):
         filename = results["img_info"]["filename"]
-        with rasterio.open(filename) as src:
-            img = src.read()  # (C, H, W)
+        try:
+            with rasterio.open(filename) as src:
+                img = src.read()  # (C, H, W)
+                band_count = src.count
+        except Exception as e:
+            raise Exception(f"Failed to open {filename}: {e}")
+        
+        # Validate band count
+        if band_count < 13:
+            raise ValueError(f"Image {filename} has {band_count} bands, expected at least 13")
 
         if self.nodata is not None:
             img = np.where(img == self.nodata, self.nodata_replace, img)
@@ -104,7 +112,7 @@ rgb_bands = [bands.index(i) for i in [1, 2, 3]]
 resize_shape = (224, 224)
 
 # --- Define Pipeline ---
-test_pipeline = Compose([
+test_pipeline = [
     dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
     dict(type="BandsExtract", bands=cfg.bands),
     dict(type="ConstantMultiply", constant=cfg.constant),
@@ -113,11 +121,12 @@ test_pipeline = Compose([
     dict(type="TorchNormalize", **cfg.img_norm_cfg),
     dict(type="Reshape", keys=["img"], new_shape=(len(cfg.bands), cfg.num_frames, -1, -1), look_up={"2": 1, "3": 2}),
     dict(type="CastTensor", keys=["img"], new_type="torch.FloatTensor"),
-    dict(type="CollectTestList", keys=["img"], meta_keys=[
+    dict(type="Collect", keys=["img"], meta_keys=[
         "img_info", "filename", "ori_filename", "img_shape", "ori_shape", "img_norm_cfg",
         "pad_shape", "scale_factor", "flip", "flip_direction"
     ]),
-])
+]
+test_pipeline = Compose(test_pipeline)
 
 # --- Colormap ---
 palette = {0: [0, 0, 255], 1: [255, 0, 0], 2: [128, 128, 128]}
@@ -138,11 +147,26 @@ for idx, img_name in enumerate(img_list):
     label_path = os.path.join(ann_dir, mask_name)
 
     try:
-        data = test_pipeline({"img_info": {"filename": img_path}})
+        data = {"img_info": {"filename": img_path}}
+        # Debug shape after LoadImageWithRasterio
+        data = test_pipeline[0](data)
+        print(f"Shape after LoadImageWithRasterio: {data['img'].shape}")
+        # Debug shape after BandsExtract
+        data = test_pipeline[1](data)
+        print(f"Shape after BandsExtract: {data['img'].shape}")
+        # Complete pipeline
+        data = test_pipeline(data)
+        print(f"Final pipeline keys: {list(data.keys())}")
+        print(f"Final image shape: {data['img'].shape if isinstance(data['img'], torch.Tensor) else 'Not a tensor'}")
+    except Exception as e:
+        print(f"Error processing {img_name_s2}: {e}")
+        continue
+
+    try:
         result = custom_inference_segmentor(model, data)
         pred_mask = result[0]
     except Exception as e:
-        print(f"Error processing {img_name_s2}: {e}")
+        print(f"Error inferring {img_name_s2}: {e}")
         continue
 
     try:
