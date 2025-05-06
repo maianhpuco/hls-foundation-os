@@ -217,7 +217,7 @@ resize_shape = (224, 224)
 
 # --- Define Pipeline ---
 test_pipeline = [
-    dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nod dupe_replace=cfg.image_nodata_replace, resize=resize_shape),
+    dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
     dict(type="CustomBandsExtract", bands=cfg.bands),
     dict(type="CustomConstantMultiply", constant=cfg.constant),
     dict(type="CustomNormalize", **cfg.img_norm_cfg),
