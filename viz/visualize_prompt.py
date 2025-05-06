@@ -54,23 +54,47 @@ class LoadImageWithRasterio:
         results["flip_direction"] = None
         results["filename"] = filename
         results["ori_filename"] = os.path.basename(filename)
+        results["img_info"] = {"filename": filename}
+        return results
+
+# --- Custom BandsExtract ---
+@PIPELINES.register_module()
+class BandsExtract:
+    def __init__(self, bands):
+        self.bands = bands
+
+    def __call__(self, results):
+        img = results["img"]
+        print(f"Bands to extract: {self.bands}")
+        if img.shape[0] < max(self.bands) + 1:
+            raise ValueError(f"Image has {img.shape[0]} bands, expected at least {max(self.bands) + 1}")
+        img = img[self.bands]
+        if img.shape[0] != len(self.bands):
+            raise ValueError(f"Expected {len(self.bands)} bands, got {img.shape[0]}")
+        results["img"] = img
         return results
 
 # --- Inference Helper ---
 def custom_inference_segmentor(model, data):
     model.eval()
-    with torch.no_grad():
-        imgs = data["img"]
-        metas = data["img_metas"]
-        if isinstance(imgs, DataContainer):
-            imgs = imgs.data
-        if isinstance(metas, DataContainer):
-            metas = metas.data
-        if isinstance(imgs, torch.Tensor):
-            imgs = [imgs]
-        imgs = [img.unsqueeze(0).cuda() if torch.cuda.is_available() else img.unsqueeze(0) for img in imgs]
-        result = model(return_loss=False, img=imgs, img_metas=[metas])
-    return result
+    try:
+        with torch.no_grad():
+            imgs = data["img"]
+            metas = data["img_metas"]
+            print(f"Image metas type: {type(metas)}")
+            if isinstance(metas, str):
+                raise ValueError(f"img_metas is a string: {metas}")
+            if isinstance(imgs, DataContainer):
+                imgs = imgs.data
+            if isinstance(metas, DataContainer):
+                metas = metas.data
+            if isinstance(imgs, torch.Tensor):
+                imgs = [imgs]
+            imgs = [img.unsqueeze(0).cuda() if torch.cuda.is_available() else img.unsqueeze(0) for img in imgs]
+            result = model(return_loss=False, img=imgs, img_metas=[metas])
+        return result
+    except Exception as e:
+        raise Exception(f"Inference failed: {str(e)}")
 
 # --- Visualization Helpers ---
 def enhance_raster_for_visualization(raster):
@@ -108,6 +132,7 @@ cfg = Config.fromfile(config_path)
 model = init_segmentor(cfg, checkpoint_path, device="cuda" if torch.cuda.is_available() else "cpu")
 
 bands = cfg.bands
+print(f"Config bands: {bands}")
 rgb_bands = [bands.index(i) for i in [1, 2, 3]]
 resize_shape = (224, 224)
 
