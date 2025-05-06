@@ -71,12 +71,12 @@ if __name__ == '__main__':
 
         # Grab the config and model weights from huggingface
         # config_path=hf_hub_download(repo_id="ibm-nasa-geospatial/Prithvi-100M-sen1floods11", filename="sen1floods11_Prithvi_100M.py")
-
+        config_path = '/project/hnguyen2/hqvo3/courseworks/codes/prithvi/configs/sen1floods11lora_config.py'
         # config_path = '/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/configs/sen1floods11_config_prompt_tuning_16.py'
         # ckpt = '/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_16/best_mIoU_epoch_80.pth'
         # ckpt=hf_hub_download(repo_id="ibm-nasa-geospatial/Prithvi-100M-sen1floods11", filename='sen1floods11_Prithvi_100M.pth') 
         # ckpt = '/project/hnguyen2/hqvo3/courseworks/codes/prithvi/checkpoints/init_exp_vanilla/best_mIoU_epoch_90.pth' # vanilla TODO
-        # ckpt = '/project/hnguyen2/hqvo3/courseworks/codes/prithvi/checkpoints/init_exp_lora/best_mIoU_epoch_75.pth' # lora
+        ckpt = '/project/hnguyen2/hqvo3/courseworks/codes/prithvi/checkpoints/init_exp_lora/best_mIoU_epoch_75.pth' # lora
 
         print('[**] type(ckpt): ', type(ckpt))
         print('[**] ckpt: ', ckpt)
@@ -113,13 +113,13 @@ if __name__ == '__main__':
         norm = matplotlib.colors.Normalize(vmin=0, vmax=2)
 
         ax[0].imshow(raster_for_visualization)
-        ax[0].set_title("(a)", fontsize=12)
+        ax[0].set_title("Input Image", fontsize=12)
 
         ax[1].imshow(label_data_inference, norm=norm, cmap="jet")
         ax[1].set_title("Ground Truth", fontsize=12)
 
         ax[2].imshow(result[0], norm=norm, cmap="jet")
-        ax[2].set_title("Prediction", fontsize=12)
+        ax[2].set_title("LoRA", fontsize=12)
 
         ax[3].imshow(raster_for_visualization)
         ax[3].imshow(result[0], cmap="jet", alpha=0.3, norm=norm)
