@@ -11,8 +11,8 @@ from mmseg.datasets.builder import PIPELINES
 from mmcv.parallel import DataContainer
 import cv2
 import warnings
-
-warnings.filterWarnings("ignore")
+warnings.filterwarnings("ignore")
+# warnings.filterWarnings("ignore")
 
 # --- Custom Raster Loader ---
 @PIPELINES.register_module()
