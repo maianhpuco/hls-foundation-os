@@ -97,17 +97,17 @@ if __name__ == '__main__':
         norm = matplotlib.colors.Normalize(vmin=0, vmax=2)
         
         ax[0].imshow(raster_for_visualization)
-        ax[0].set_title("Input Image", fontsize=12)
+        # ax[0].set_title("Input Image", fontsize=12)
         
         ax[1].imshow(label_data_inference, norm=norm, cmap="jet")
-        ax[1].set_title("Ground Truth", fontsize=12)
+        # ax[1].set_title("Ground Truth", fontsize=12)
         
         ax[2].imshow(result[0], norm=norm, cmap="jet")
-        ax[2].set_title("Prompt Tuning (n=16)", fontsize=12)
+        # ax[2].set_title("Prompt Tuning (n=16)", fontsize=12)
         
         ax[3].imshow(raster_for_visualization)
         ax[3].imshow(result[0], cmap="jet", alpha=0.3, norm=norm)
-        ax[3].set_title("Overlay", fontsize=12)
+        # ax[3].set_title("Overlay", fontsize=12)
         
         for subplot in ax:
             subplot.axis('off')
