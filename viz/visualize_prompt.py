@@ -113,6 +113,7 @@ class CustomNormalize:
         self.mean = np.array(mean, dtype=np.float32)
         self.std = np.array(std, dtype=np.float32)
         self.to_rgb = to_rgb
+        self.img_norm_cfg = {'mean': mean, 'std': std, 'to_rgb': to_rgb}
 
     def __call__(self, results):
         img = results["img"]
@@ -133,6 +134,7 @@ class CustomNormalize:
             raise ValueError(f"Failed to normalize img: {e}")
 
         results["img"] = img
+        results["img_norm_cfg"] = self.img_norm_cfg  # Add img_norm_cfg to results
         return results
 
 # --- Inference Helper ---
@@ -215,7 +217,7 @@ resize_shape = (224, 224)
 
 # --- Define Pipeline ---
 test_pipeline = [
-    dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
+    dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nod dupe_replace=cfg.image_nodata_replace, resize=resize_shape),
     dict(type="CustomBandsExtract", bands=cfg.bands),
     dict(type="CustomConstantMultiply", constant=cfg.constant),
     dict(type="CustomNormalize", **cfg.img_norm_cfg),
@@ -256,6 +258,9 @@ for idx, img_name in enumerate(img_list):
                 shape = data["img"].shape if isinstance(data["img"], (torch.Tensor, np.ndarray)) else "Not a tensor/array"
                 dtype = type(data["img"]).__name__
                 print(f"Shape after transform {i} ({transform.__class__.__name__}): {shape}, Type: {dtype}")
+            # Debug available keys before Collect
+            if i == len(test_pipeline.transforms) - 2:  # Before Collect
+                print(f"Keys before Collect: {list(data.keys())}")
         print(f"Final pipeline keys: {list(data.keys())}")
         print(f"Final image shape: {data['img'].shape if isinstance(data['img'], torch.Tensor) else 'Not a tensor'}")
     except Exception as e:
