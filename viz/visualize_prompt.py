@@ -5,8 +5,6 @@ import torch
 import matplotlib.pyplot as plt
 import pandas as pd
 from mmcv import Config
- 
-# from mmcv import Config
 from mmseg.apis import init_segmentor
 from mmseg.datasets.pipelines import Compose
 from mmseg.datasets.builder import PIPELINES
