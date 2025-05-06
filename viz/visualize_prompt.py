@@ -12,7 +12,7 @@ from mmcv.parallel import DataContainer
 import cv2
 import warnings
 
-warnings.filterwarnings("ignore")
+warnings.filterWarnings("ignore")
 
 # --- Custom Raster Loader ---
 @PIPELINES.register_module()
@@ -145,12 +145,15 @@ def custom_inference_segmentor(model, data):
             imgs = data["img"]
             metas = data["img_metas"]
             print(f"Image metas type: {type(metas)}")
-            if isinstance(metas, str):
-                raise ValueError(f"img_metas is a string: {metas}")
-            if isinstance(imgs, DataContainer):
-                imgs = imgs.data
             if isinstance(metas, DataContainer):
                 metas = metas.data
+                print(f"Metas after unpacking DataContainer: type={type(metas)}, content={metas}")
+            if isinstance(metas, str):
+                raise ValueError(f"img_metas is unexpectedly a string: {metas}")
+            if not isinstance(metas, dict):
+                raise ValueError(f"img_metas is not a dictionary: type={type(metas)}, content={metas}")
+            if isinstance(imgs, DataContainer):
+                imgs = imgs.data
             if isinstance(imgs, torch.Tensor):
                 imgs = [imgs]
             imgs = [img.unsqueeze(0).cuda() if torch.cuda.is_available() else img.unsqueeze(0) for img in imgs]
