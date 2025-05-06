@@ -111,8 +111,19 @@ test_pipeline = Compose([
     dict(
         type="CollectTestList",
         keys=["img"],
-        meta_keys=["img_info", "filename", "ori_filename", "img_shape", "ori_shape", "img_norm_cfg"],
-    )
+        meta_keys=[
+            "img_info",
+            "filename",
+            "ori_filename",
+            "img_shape",
+            "ori_shape",
+            "img_norm_cfg",
+            "pad_shape",         # required
+            "scale_factor",      # required
+            "flip",              # required
+            "flip_direction",    # required
+        ],
+    ),
 ])
 
 df = pd.read_csv(split_csv_path)
