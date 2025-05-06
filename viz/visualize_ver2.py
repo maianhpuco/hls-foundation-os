@@ -162,8 +162,8 @@ def apply_colormap(mask, palette):
     return color
 
 # Load config and model
-config_path = "configs/sen1floods11_config_prompt_tuning_16.py"
-checkpoint_path = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_16/best_mIoU_epoch_80.pth"
+config_path = "configs/sen1floods11_config_prompt_tuning_08.py"
+checkpoint_path = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_08/latest.pth"
 cfg = Config.fromfile(config_path)
 cfg.img_norm_cfg = {
     'mean': [123.675, 116.28, 103.53, 123.675, 116.28, 103.53],
@@ -226,6 +226,7 @@ for idx, (img_name, mask_name) in tqdm(list(enumerate(zip(img_list[:10], mask_li
 
     try:
         pred_mask = custom_inference_segmentor(model, data)
+        
     except Exception as e:
         print(f"[ERROR] Inference failed for {img_name_s2}: {e}")
         continue
