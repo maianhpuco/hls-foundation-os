@@ -58,8 +58,27 @@ if __name__ == '__main__':
     mask_list = pd_dataframe.iloc[:, 1].tolist()  # First and second columns  
     print('-> img_list: ', img_list)
     print('-> mask_list: ', mask_list)
+    # Define the target substrings (from your image filenames)
+    target_substrings = [
+        "India_399883",
+        "Pakistan_664885",
+        "Paraguay_868895"
+    ]
 
-    for idx, cur_img_name in enumerate(img_list):
+    # Filter the image list
+    filtered_img_list = [
+        img_name for img_name in img_list
+        if any(target in img_name for target in target_substrings)
+    ]
+
+    # Do the same for masks
+    filtered_mask_list = [
+        mask_name for img_name, mask_name in zip(img_list, mask_list)
+        if any(target in img_name for target in target_substrings)
+    ]
+    for idx, (cur_img_name, cur_mask_name) in enumerate(zip(filtered_img_list, filtered_mask_list)):
+ 
+    # for idx, cur_img_name in enumerate(img_list):
         print('--- {} - {} ---'.format(idx, cur_img_name))
         cur_mask_name = mask_list[idx]
 
