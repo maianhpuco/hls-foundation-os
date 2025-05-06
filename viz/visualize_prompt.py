@@ -6,11 +6,12 @@ import torch
 import matplotlib.pyplot as plt
 from mmseg.apis import init_segmentor, inference_segmentor
 from mmcv import Config
+from mmseg.datasets.pipelines import Compose
 import warnings
 warnings.filterwarnings("ignore")
 
 # Paths from the experiment
-config_path = "configs/sen1floods11_config_prompt_tuning_16.py"
+config_path = "configs/sen1floods11_config_prompt_tuning_nprompt_16.py"
 work_dir = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_16"
 output_dir = os.path.join(work_dir, "inference")
 os.makedirs(output_dir, exist_ok=True)
@@ -40,6 +41,48 @@ ignore_index = cfg.ignore_index
 bands = cfg.bands
 rgb_bands = [bands.index(i) for i in [1, 2, 3]]  # Indices for RGB bands (1, 2, 3)
 
+# Custom test pipeline using rasterio
+test_pipeline = [
+    dict(
+        type="LoadGeospatialImageFromFile",
+        to_float32=False,
+        nodata=cfg.image_nodata,
+        nodata_replace=cfg.image_nodata_replace,
+        use_rasterio=True,  # Explicitly use rasterio
+    ),
+    dict(type="BandsExtract", bands=cfg.bands),
+    dict(type="ConstantMultiply", constant=cfg.constant),
+    dict(type="ToTensor", keys=["img"]),
+    dict(type="TorchPermute", keys=["img"], order=(2, 0, 1)),
+    dict(type="TorchNormalize", **cfg.img_norm_cfg),
+    dict(
+        type="Reshape",
+        keys=["img"],
+        new_shape=(len(cfg.bands), cfg.num_frames, -1, -1),
+        look_up={"2": 1, "3": 2},
+    ),
+    dict(type="CastTensor", keys=["img"], new_type="torch.FloatTensor"),
+    dict(
+        type="CollectTestList",
+        keys=["img"],
+        meta_keys=[
+            "img_info",
+            "seg_fields",
+            "img_prefix",
+            "seg_prefix",
+            "filename",
+            "ori_filename",
+            "img",
+            "img_shape",
+            "ori_shape",
+            "pad_shape",
+            "scale_factor",
+            "img_norm_cfg",
+        ],
+    ),
+]
+test_pipeline = Compose(test_pipeline)
+
 # Load test split
 with open(test_split, "r") as f:
     test_files = [line.strip() for line in f]
@@ -56,7 +99,7 @@ def apply_colormap(mask, palette, ignore_index):
 
 # Visualization function
 def visualize_result(img_path, gt_path, pred_mask, output_path):
-    # Read input image
+    # Read input image with rasterio
     with rasterio.open(img_path) as src:
         img = src.read()  # Shape: (C, H, W)
     # Select RGB bands and normalize for display
@@ -64,7 +107,7 @@ def visualize_result(img_path, gt_path, pred_mask, output_path):
     rgb_img = (rgb_img - rgb_img.min()) / (rgb_img.max() - rgb_img.min() + 1e-6) * 255
     rgb_img = rgb_img.astype(np.uint8)
 
-    # Read ground truth
+    # Read ground truth with rasterio
     with rasterio.open(gt_path) as src:
         gt = src.read(1)  # Shape: (H, W)
 
@@ -92,8 +135,12 @@ for idx, fname in enumerate(test_files):
     img_path = os.path.join(img_dir, fname + img_suffix)
     gt_path = os.path.join(ann_dir, fname + seg_map_suffix)
     
+    # Prepare data for inference
+    data = {"img_info": {"filename": img_path}}
+    data = test_pipeline(data)
+    
     # Run inference
-    result = inference_segmentor(model, img_path)
+    result = inference_segmentor(model, [data])
     pred_mask = result[0]  # Shape: (H, W)
 
     # Save visualization
