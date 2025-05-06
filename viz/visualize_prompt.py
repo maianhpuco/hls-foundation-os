@@ -106,6 +106,35 @@ class CustomConstantMultiply:
 
         return results
 
+# --- Custom Normalize ---
+@PIPELINES.register_module()
+class CustomNormalize:
+    def __init__(self, mean, std, to_rgb=False):
+        self.mean = np.array(mean, dtype=np.float32)
+        self.std = np.array(std, dtype=np.float32)
+        self.to_rgb = to_rgb
+
+    def __call__(self, results):
+        img = results["img"]
+        print(f"CustomNormalize: mean_shape={self.mean.shape}, std_shape={self.std.shape}, img_shape={img.shape}, to_rgb={self.to_rgb}")
+        
+        # Ensure mean and std are broadcastable
+        if self.mean.shape != (img.shape[0],) or self.std.shape != (img.shape[0],):
+            raise ValueError(f"Mean shape {self.mean.shape} or std shape {self.std.shape} does not match img channels {img.shape[0]}")
+        
+        # Reshape mean and std for broadcasting
+        mean = self.mean[:, np.newaxis, np.newaxis]  # Shape (C, 1, 1)
+        std = self.std[:, np.newaxis, np.newaxis]    # Shape (C, 1, 1)
+
+        # Perform normalization using NumPy
+        try:
+            img = (img - mean) / std
+        except Exception as e:
+            raise ValueError(f"Failed to normalize img: {e}")
+
+        results["img"] = img
+        return results
+
 # --- Inference Helper ---
 def custom_inference_segmentor(model, data):
     model.eval()
@@ -162,13 +191,14 @@ os.makedirs(output_dir, exist_ok=True)
 
 cfg = Config.fromfile(config_path)
 # Debug config parameters
+print(f"Original config img_norm_cfg: {Config.fromfile(config_path).img_norm_cfg}")
 print(f"Config img_norm_cfg: {cfg.img_norm_cfg}")
 print(f"Config constant: {cfg.constant}, constant_shape={np.shape(cfg.constant) if isinstance(cfg.constant, (np.ndarray, list)) else 'scalar'}")
 print(f"Config num_frames: {cfg.num_frames}")
 
 # Override img_norm_cfg to ensure 6 channels
 cfg.img_norm_cfg = {
-    'mean': [123.675, 116.28, 103.53, 123.675, 116.28, 103.53],  # For 6 bands
+    'mean': [123.675, 116.28, 103.53, 123.675, 116.28, 103.53],
     'std': [58.395, 57.12, 57.375, 58.395, 57.12, 57.375],
     'to_rgb': False
 }
@@ -188,7 +218,7 @@ test_pipeline = [
     dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
     dict(type="CustomBandsExtract", bands=cfg.bands),
     dict(type="CustomConstantMultiply", constant=cfg.constant),
-    dict(type="Normalize", **cfg.img_norm_cfg),
+    dict(type="CustomNormalize", **cfg.img_norm_cfg),
     dict(type="ToTensor", keys=["img"]),
     dict(type="Reshape", keys=["img"], new_shape=(len(cfg.bands), cfg.num_frames, -1, -1), look_up={"2": 1, "3": 2}),
     dict(type="CastTensor", keys=["img"], new_type="torch.FloatTensor"),
