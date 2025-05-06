@@ -111,6 +111,6 @@ if __name__ == '__main__':
             subplot.axis('off')
 
         # Save instead of display  
-        os.makedirs('./vis/outputs/p32', exist_ok=True)
-        plt.savefig('./vis/outputs/p32/vis_{}.png'.format(IMG_NAME.rsplit('.', 1)[0]), bbox_inches='tight', dpi=300)  
+        os.makedirs('./vis/outputs/p16', exist_ok=True)
+        plt.savefig('./vis/outputs/p16/vis_{}.png'.format(IMG_NAME.rsplit('.', 1)[0]), bbox_inches='tight', dpi=300)  
         plt.close(fig)  # Close the figure to free memory  
