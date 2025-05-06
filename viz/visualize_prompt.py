@@ -129,6 +129,18 @@ split_csv_path = "/project/hnguyen2/mvu9/datasets/SEN1Floods11/v1.1/splits/flood
 os.makedirs(output_dir, exist_ok=True)
 
 cfg = Config.fromfile(config_path)
+# Debug config parameters
+print(f"Config img_norm_cfg: {cfg.img_norm_cfg}")
+print(f"Config constant: {cfg.constant}")
+print(f"Config num_frames: {cfg.num_frames}")
+
+# Override img_norm_cfg to ensure 6 channels
+cfg.img_norm_cfg = {
+    'mean': [123.675, 116.28, 103.53, 123.675, 116.28, 103.53],  # For 6 bands
+    'std': [58.395, 57.12, 57.375, 58.395, 57.12, 57.375],
+    'to_rgb': False
+}
+
 model = init_segmentor(cfg, checkpoint_path, device="cuda" if torch.cuda.is_available() else "cpu")
 
 bands = cfg.bands
@@ -173,14 +185,12 @@ for idx, img_name in enumerate(img_list):
 
     try:
         data = {"img_info": {"filename": img_path}}
-        # Debug shape after LoadImageWithRasterio
-        data = test_pipeline.transforms[0](data)
-        print(f"Shape after LoadImageWithRasterio: {data['img'].shape}")
-        # Debug shape after CustomBandsExtract
-        data = test_pipeline.transforms[1](data)
-        print(f"Shape after CustomBandsExtract: {data['img'].shape}")
-        # Complete pipeline
-        data = test_pipeline(data)
+        # Debug shape after each transform
+        for i, transform in enumerate(test_pipeline.transforms):
+            data = transform(data)
+            if "img" in data:
+                shape = data["img"].shape if isinstance(data["img"], (torch.Tensor, np.ndarray)) else "Not a tensor/array"
+                print(f"Shape after transform {i} ({transform.__class__.__name__}): {shape}")
         print(f"Final pipeline keys: {list(data.keys())}")
         print(f"Final image shape: {data['img'].shape if isinstance(data['img'], torch.Tensor) else 'Not a tensor'}")
     except Exception as e:
