@@ -88,7 +88,6 @@ test_pipeline = [
         keys=["img"],
         meta_keys=[
             "img_info",
-            "seg_fields",
             "img_prefix",
             "seg_prefix",
             "filename",
