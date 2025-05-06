@@ -74,6 +74,38 @@ class CustomBandsExtract:
         results["img"] = img
         return results
 
+# --- Custom ConstantMultiply ---
+@PIPELINES.register_module()
+class ConstantMultiply:
+    def __init__(self, constant):
+        self.constant = constant
+
+    def __call__(self, results):
+        img = results["img"]
+        print(f"ConstantMultiply: constant={self.constant}, constant_shape={np.shape(self.constant) if isinstance(self.constant, np.ndarray) else 'scalar'}, img_shape={img.shape}")
+        
+        # Convert constant to NumPy array if scalar
+        if np.isscalar(self.constant):
+            constant = np.array(self.constant, dtype=img.dtype)
+        else:
+            constant = np.array(self.constant, dtype=img.dtype)
+
+        # Ensure constant is broadcastable
+        if constant.shape == ():
+            pass  # Scalar, no reshaping needed
+        elif constant.shape == (img.shape[0],):
+            constant = constant[:, np.newaxis, np.newaxis]  # Shape (C, 1, 1)
+        elif constant.shape != img.shape:
+            raise ValueError(f"Constant shape {constant.shape} is not broadcastable to img shape {img.shape}")
+
+        # Perform multiplication using NumPy
+        try:
+            results["img"] = img * constant
+        except Exception as e:
+            raise ValueError(f"Failed to multiply img with constant: {e}")
+
+        return results
+
 # --- Inference Helper ---
 def custom_inference_segmentor(model, data):
     model.eval()
@@ -131,7 +163,7 @@ os.makedirs(output_dir, exist_ok=True)
 cfg = Config.fromfile(config_path)
 # Debug config parameters
 print(f"Config img_norm_cfg: {cfg.img_norm_cfg}")
-print(f"Config constant: {cfg.constant}")
+print(f"Config constant: {cfg.constant}, constant_shape={np.shape(cfg.constant) if isinstance(cfg.constant, (np.ndarray, list)) else 'scalar'}")
 print(f"Config num_frames: {cfg.num_frames}")
 
 # Override img_norm_cfg to ensure 6 channels
@@ -140,6 +172,9 @@ cfg.img_norm_cfg = {
     'std': [58.395, 57.12, 57.375, 58.395, 57.12, 57.375],
     'to_rgb': False
 }
+
+# Override constant to ensure compatibility
+cfg.constant = 0.0001  # Scalar value
 
 model = init_segmentor(cfg, checkpoint_path, device="cuda" if torch.cuda.is_available() else "cpu")
 
