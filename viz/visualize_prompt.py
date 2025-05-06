@@ -7,11 +7,36 @@ import matplotlib.pyplot as plt
 from mmseg.apis import init_segmentor, inference_segmentor
 from mmcv import Config
 from mmseg.datasets.pipelines import Compose
+from mmcv.utils import Registry
 import warnings
 warnings.filterwarnings("ignore")
 
+# Registry for custom pipeline transforms
+PIPELINES = Registry("pipeline")
+
+# Custom pipeline transform to load images with rasterio
+@PIPELINES.register_module()
+class LoadImageWithRasterio:
+    def __init__(self, to_float32=False, nodata=None, nodata_replace=0):
+        self.to_float32 = to_float32
+        self.nodata = nodata
+        self.nodata_replace = nodata_replace
+
+    def __call__(self, results):
+        filename = results["img_info"]["filename"]
+        with rasterio.open(filename) as src:
+            img = src.read()  # Shape: (C, H, W)
+        if self.nodata is not None:
+            img = np.where(img == self.nodata, self.nodata_replace, img)
+        if self.to_float32:
+            img = img.astype(np.float32)
+        results["img"] = img
+        results["img_shape"] = img.shape[1:]  # (H, W)
+        results["ori_shape"] = img.shape[1:]  # (H, W)
+        return results
+
 # Paths from the experiment
-config_path = "configs/sen1floods11_config_prompt_tuning_16.py"
+config_path = "configs/sen1floods11_config_prompt_tuning_nprompt_16.py"
 work_dir = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_16"
 output_dir = os.path.join(work_dir, "inference")
 os.makedirs(output_dir, exist_ok=True)
@@ -44,11 +69,10 @@ rgb_bands = [bands.index(i) for i in [1, 2, 3]]  # Indices for RGB bands (1, 2, 
 # Custom test pipeline using rasterio
 test_pipeline = [
     dict(
-        type="LoadGeospatialImageFromFile",
+        type="LoadImageWithRasterio",
         to_float32=False,
         nodata=cfg.image_nodata,
         nodata_replace=cfg.image_nodata_replace,
-        use_rasterio=True,  # Explicitly use rasterio
     ),
     dict(type="BandsExtract", bands=cfg.bands),
     dict(type="ConstantMultiply", constant=cfg.constant),
@@ -137,11 +161,19 @@ for idx, fname in enumerate(test_files):
     
     # Prepare data for inference
     data = {"img_info": {"filename": img_path}}
-    data = test_pipeline(data)
+    try:
+        data = test_pipeline(data)
+    except Exception as e:
+        print(f"Error processing {fname}: {e}")
+        continue
     
     # Run inference
-    result = inference_segmentor(model, [data])
-    pred_mask = result[0]  # Shape: (H, W)
+    try:
+        result = inference_segmentor(model, [data])
+        pred_mask = result[0]  # Shape: (H, W)
+    except Exception as e:
+        print(f"Error inferring {fname}: {e}")
+        continue
 
     # Save visualization
     output_path = os.path.join(output_dir, f"{fname}_visualization.png")
