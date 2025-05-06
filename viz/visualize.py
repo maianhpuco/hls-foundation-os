@@ -72,7 +72,7 @@ if __name__ == '__main__':
         # Grab the config and model weights from huggingface
         # config_path=hf_hub_download(repo_id="ibm-nasa-geospatial/Prithvi-100M-sen1floods11", filename="sen1floods11_Prithvi_100M.py")
 
-        config_path = '/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/sen1floods11_config_prompt_tuning_16.py'
+        config_path = '/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/configs/sen1floods11_config_prompt_tuning_16.py'
         ckpt = '/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_16/best_mIoU_epoch_80.pth'
         # ckpt=hf_hub_download(repo_id="ibm-nasa-geospatial/Prithvi-100M-sen1floods11", filename='sen1floods11_Prithvi_100M.pth') 
         # ckpt = '/project/hnguyen2/hqvo3/courseworks/codes/prithvi/checkpoints/init_exp_vanilla/best_mIoU_epoch_90.pth' # vanilla TODO
