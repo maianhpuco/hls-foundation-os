@@ -12,24 +12,42 @@ from mmcv.parallel import DataContainer
 import cv2
 import warnings
 import traceback
+import signal
+from contextlib import contextmanager
 
 warnings.filterwarnings("ignore")
+
+# Timeout decorator for I/O operations
+@contextmanager
+def timeout(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutError(f"Operation timed out after {seconds} seconds")
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
 
 # --- Custom Raster Loader ---
 @PIPELINES.register_module()
 class LoadImageWithRasterio:
-    def __init__(self, to_float32=False, nodata=None, nodata_replace=0, resize=(224, 224)):
+    def __init__(self, to_float32=False, nodata=None, nodata_replace=0, resize=(224, 224), io_timeout=30):
         self.to_float32 = to_float32
         self.nodata = nodata
         self.nodata_replace = nodata_replace
         self.resize = resize
+        self.io_timeout = io_timeout
 
     def __call__(self, results):
         filename = results["img_info"]["filename"]
         try:
-            with rasterio.open(filename) as src:
-                img = src.read()  # (C, H, W)
-                band_count = src.count
+            with timeout(self.io_timeout):
+                with rasterio.open(filename) as src:
+                    img = src.read()  # (C, H, W)
+                    band_count = src.count
+        except TimeoutError as e:
+            raise Exception(f"Timeout reading {filename}: {e}")
         except Exception as e:
             raise Exception(f"Failed to open {filename}: {e}")
         
@@ -38,13 +56,72 @@ class LoadImageWithRasterio:
             raise ValueError(f"Image {filename} has {band_count} bands, expected at least 13")
 
         if self.nodata is not None:
-            img = np.where(img == self.nodata, self.nodata_replace, img)
+            try:
+                img = np.where(img == self.nodata, self.nodata_replace, img)
+            except Exception as e:
+                raise Exception(f"Failed to replace nodata in {filename}: {e}")
         if self.to_float32:
             img = img.astype(np.float32)
 
         # Resize to (C, 224, 224)
-        img_resized = np.stack([cv2.resize(band, self.resize, interpolation=cv2.INTER_LINEAR)
-                                for band in img])
+        try:
+            img_resized = np.stack([cv2.resize(band, self.resize, interpolation=cv2.INTER_LINEAR)
+                                    for band in img])
+        except Exception as e:
+            raise Exception(f"Failed to resize {filename}: {e}")
+
+        results["img"] = img_resized
+        results["img_shape"] = img_resized.shape[1:]
+        results["ori_shape"] = img_resized.shape[1:]
+        results["pad_shape"] = img_resized.shape[1:]
+        results["scale_factor"] = 1.0
+        results["flip"] = False
+        results["flip_direction"] = None
+        results["filename"] = filename
+        results["ori_filename"] = os.path.basename(filename)
+        results["img_info"] = {"filename": filename}
+        return results
+
+# --- Custom BandsExtract ---
+@PIPELINES.register_module()
+class LoadImageWithRasterio:
+    def __init__(self, to_float32=False, nodata=None, nodata_replace=0, resize=(224, 224), io_timeout=30):
+        self.to_float32 = to_float32
+        self.nodata = nodata
+        self.nodata_replace = nodata_replace
+        self.resize = resize
+        self.io_timeout = io_timeout
+
+    def __call__(self, results):
+        filename = results["img_info"]["filename"]
+        try:
+            with timeout(self.io_timeout):
+                with rasterio.open(filename) as src:
+                    img = src.read()  # (C, H, W)
+                    band_count = src.count
+        except TimeoutError as e:
+            raise Exception(f"Timeout reading {filename}: {e}")
+        except Exception as e:
+            raise Exception(f"Failed to open {filename}: {e}")
+        
+        # Validate band count
+        if band_count < 13:
+            raise ValueError(f"Image {filename} has {band_count} bands, expected at least 13")
+
+        if self.nodata is not None:
+            try:
+                img = np.where(img == self.nodata, self.nodata_replace, img)
+            except Exception as e:
+                raise Exception(f"Failed to replace nodata in {filename}: {e}")
+        if self.to_float32:
+            img = img.astype(np.float32)
+
+        # Resize to (C, 224, 224)
+        try:
+            img_resized = np.stack([cv2.resize(band, self.resize, interpolation=cv2.INTER_LINEAR)
+                                    for band in img])
+        except Exception as e:
+            raise Exception(f"Failed to resize {filename}: {e}")
 
         results["img"] = img_resized
         results["img_shape"] = img_resized.shape[1:]
@@ -248,7 +325,7 @@ resize_shape = (224, 224)
 
 # --- Define Pipeline ---
 test_pipeline = [
-    dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
+    dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape, io_timeout=30),
     dict(type="CustomBandsExtract", bands=cfg.bands),
     dict(type="CustomConstantMultiply", constant=cfg.constant),
     dict(type="CustomNormalize", **cfg.img_norm_cfg),
@@ -273,7 +350,14 @@ img_dir = cfg.img_dir
 ann_dir = cfg.ann_dir
 
 # Temporary workaround: Skip problematic images
-skip_images = ["Somalia_60129_S1Hand.tif", "USA_504150_S1Hand.tif", "USA_758178_S1Hand.tif", "USA_670826_S1Hand.tif", "USA_595451_S1Hand.tif"]
+skip_images = [
+    "Somalia_60129_S1Hand.tif",
+    "USA_504150_S1Hand.tif",
+    "USA_758178_S1Hand.tif",
+    "USA_670826_S1Hand.tif",
+    "USA_595451_S1Hand.tif",
+    "Paraguay_80102_S1Hand.tif"
+]
 img_list = [img for img in img_list if img not in skip_images]
 mask_list = [mask for img, mask in zip(df.iloc[:, 0].tolist(), mask_list) if img not in skip_images]
 
