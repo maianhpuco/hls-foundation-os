@@ -14,7 +14,9 @@ metas = [{
     "flip_direction": None
 }]
 try:
-    result = model(return_loss=False, img=[imgs], img_metas=metas)
+    result = model(return_loss=False, img=[imgs], img_metas=[metas])
+ 
+    # result = model(return_loss=False, img=[imgs], img_metas=metas)
     print("Inference successful:", result)
 except Exception as e:
     import traceback
