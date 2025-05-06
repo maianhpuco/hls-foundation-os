@@ -162,8 +162,8 @@ def apply_colormap(mask, palette):
     return color
 
 # Load config and model
-config_path = "configs/sen1floods11_config_prompt_tuning_08.py"
-checkpoint_path = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_08/latest.pth"
+config_path = "configs/sen1flood11_config_100.py"
+checkpoint_path = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/full_100/latest.pth"
 cfg = Config.fromfile(config_path)
 cfg.img_norm_cfg = {
     'mean': [123.675, 116.28, 103.53, 123.675, 116.28, 103.53],
@@ -194,7 +194,7 @@ test_pipeline = Compose(pipeline_cfg)
 
 # Visualization Setup
 palette = {0: [0, 0, 255], 1: [255, 0, 0], 2: [128, 128, 128]}
-output_dir = "./vis/outputs/nprompt_16_resized_v3"
+output_dir = "./vis/outputs/nprompt_full"
 os.makedirs(output_dir, exist_ok=True)
 
 # Load dataset
