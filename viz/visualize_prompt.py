@@ -59,7 +59,7 @@ class LoadImageWithRasterio:
 
 # --- Custom BandsExtract ---
 @PIPELINES.register_module()
-class BandsExtract:
+class CustomBandsExtract:
     def __init__(self, bands):
         self.bands = bands
 
@@ -139,7 +139,7 @@ resize_shape = (224, 224)
 # --- Define Pipeline ---
 test_pipeline = [
     dict(type="LoadImageWithRasterio", to_float32=False, nodata=cfg.image_nodata, nodata_replace=cfg.image_nodata_replace, resize=resize_shape),
-    dict(type="BandsExtract", bands=cfg.bands),
+    dict(type="CustomBandsExtract", bands=cfg.bands),
     dict(type="ConstantMultiply", constant=cfg.constant),
     dict(type="ToTensor", keys=["img"]),
     dict(type="TorchPermute", keys=["img"], order=(2, 0, 1)),
@@ -176,9 +176,9 @@ for idx, img_name in enumerate(img_list):
         # Debug shape after LoadImageWithRasterio
         data = test_pipeline.transforms[0](data)
         print(f"Shape after LoadImageWithRasterio: {data['img'].shape}")
-        # Debug shape after BandsExtract
+        # Debug shape after CustomBandsExtract
         data = test_pipeline.transforms[1](data)
-        print(f"Shape after BandsExtract: {data['img'].shape}")
+        print(f"Shape after CustomBandsExtract: {data['img'].shape}")
         # Complete pipeline
         data = test_pipeline(data)
         print(f"Final pipeline keys: {list(data.keys())}")
