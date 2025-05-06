@@ -123,7 +123,20 @@ def custom_inference_segmentor(model, data):
         if isinstance(imgs, torch.Tensor):
             imgs = [imgs]
         imgs = [img.unsqueeze(0).cuda() if torch.cuda.is_available() else img.unsqueeze(0) for img in imgs]
-        return model(return_loss=False, img=imgs, img_metas=[[metas]])
+        result = model(return_loss=False, img=imgs, img_metas=[[metas]])
+
+        # Process prediction
+        pred = result[0]
+        if isinstance(pred, torch.Tensor):
+            if pred.ndim == 3 and pred.shape[0] == 1:
+                pred_mask = (pred.sigmoid() > 0.5).long().squeeze().cpu().numpy()
+            elif pred.ndim == 3:
+                pred_mask = pred.argmax(dim=0).cpu().numpy()
+            else:
+                pred_mask = pred.cpu().numpy()
+        else:
+            pred_mask = np.array(pred)
+        return pred_mask
 
 def enhance_raster_for_visualization(raster):
     NO_DATA_FLOAT = 0.0001
@@ -157,7 +170,7 @@ cfg.img_norm_cfg = {
     'std': [58.395, 57.12, 57.375, 58.395, 57.12, 57.375],
     'to_rgb': False
 }
-cfg.constant = 0.0001
+cfg.constant = 1.0  # Fix scaling issue
 model = init_segmentor(cfg, checkpoint_path, device="cuda" if torch.cuda.is_available() else "cpu")
 
 bands = cfg.bands
@@ -198,7 +211,7 @@ filtered = [(i, m) for i, m in zip(img_list, mask_list) if i not in skip_set]
 img_list, mask_list = zip(*filtered)
 
 # Inference loop
-for idx, (img_name, mask_name) in tqdm(list(enumerate(zip(img_list, mask_list))), total=len(img_list)):
+for idx, (img_name, mask_name) in tqdm(list(enumerate(zip(img_list[:10], mask_list[:10]))), total=10):
     img_name_s2 = img_name.replace("S1", "S2")
     img_path = os.path.join(img_dir, img_name_s2)
     label_path = os.path.join(ann_dir, mask_name)
@@ -212,8 +225,7 @@ for idx, (img_name, mask_name) in tqdm(list(enumerate(zip(img_list, mask_list)))
         continue
 
     try:
-        result = custom_inference_segmentor(model, data)
-        pred_mask = result[0]
+        pred_mask = custom_inference_segmentor(model, data)
     except Exception as e:
         print(f"[ERROR] Inference failed for {img_name_s2}: {e}")
         continue
