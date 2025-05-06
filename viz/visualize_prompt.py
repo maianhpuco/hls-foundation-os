@@ -36,7 +36,7 @@ class LoadImageWithRasterio:
         return results
 
 # Paths from the experiment
-config_path = "configs/sen1floods11_config_prompt_tuning_nprompt_16.py"
+config_path = "configs/sen1floods11_config_prompt_tuning_16.py"
 work_dir = "/project/hnguyen2/mvu9/folder_04_ma/hls-foundation-os/nprompt_16"
 output_dir = os.path.join(work_dir, "inference")
 os.makedirs(output_dir, exist_ok=True)
