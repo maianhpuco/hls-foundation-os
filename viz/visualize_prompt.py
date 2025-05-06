@@ -153,20 +153,20 @@ def custom_inference_segmentor(model, data):
                 raise ValueError(f"img_metas is unexpectedly a string: {metas}")
             if not isinstance(metas, dict):
                 raise ValueError(f"img_metas is not a dictionary: type={type(metas)}, content={metas}")
-            # Clean metas to remove string fields that might cause issues
+            # Clean metas to include only essential fields
             metas_cleaned = {
-                k: v for k, v in metas.items()
-                if k not in ["filename", "ori_filename"] and not isinstance(v, str)
+                "img_shape": metas.get("img_shape", (224, 224)),
+                "ori_shape": metas.get("ori_shape", (224, 224)),
+                "pad_shape": metas.get("pad_shape", (224, 224)),
+                "img_norm_cfg": metas.get("img_norm_cfg", {
+                    "mean": [123.675, 116.28, 103.53, 123.675, 116.28, 103.53],
+                    "std": [58.395, 57.12, 57.375, 58.395, 57.12, 57.375],
+                    "to_rgb": False
+                }),
+                "scale_factor": metas.get("scale_factor", 1.0),
+                "flip": metas.get("flip", False),
+                "flip_direction": metas.get("flip_direction", None)
             }
-            # Preserve essential fields
-            metas_cleaned["img_info"] = metas.get("img_info", {})
-            metas_cleaned["img_shape"] = metas.get("img_shape", (224, 224))
-            metas_cleaned["ori_shape"] = metas.get("ori_shape", (224, 224))
-            metas_cleaned["pad_shape"] = metas.get("pad_shape", (224, 224))
-            metas_cleaned["img_norm_cfg"] = metas.get("img_norm_cfg", {})
-            metas_cleaned["scale_factor"] = metas.get("scale_factor", 1.0)
-            metas_cleaned["flip"] = metas.get("flip", False)
-            metas_cleaned["flip_direction"] = metas.get("flip_direction", None)
             metas_list = [metas_cleaned]
             print(f"Passing to model: img_shape={imgs.shape}, metas_list={metas_list}")
             if isinstance(imgs, DataContainer):
@@ -191,7 +191,8 @@ def enhance_raster_for_visualization(raster):
         if not np.any(valid_mask):
             channels.append(np.zeros_like(ref))
             continue
-        vmin, vmax = np.percentile(ref[valid_mask], PERCENTILES)
+        vmin, vmax = np.percentile(ref[valid_mask], PER勞
+CENTILES)
         norm = (ref - vmin) / (vmax - vmin)
         norm[~valid_mask] = 0
         channels.append(np.clip(norm, 0, 1))
