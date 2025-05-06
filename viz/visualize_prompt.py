@@ -4,7 +4,7 @@ import rasterio
 import torch
 import matplotlib.pyplot as plt
 import pandas as pd
-from mmengine.config import Config
+from mmcv.config import Config
  
 # from mmcv import Config
 from mmseg.apis import init_segmentor
