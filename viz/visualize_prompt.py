@@ -273,7 +273,7 @@ img_dir = cfg.img_dir
 ann_dir = cfg.ann_dir
 
 # Temporary workaround: Skip problematic images
-skip_images = ["Somalia_60129_S1Hand.tif", "USA_504150_S1Hand.tif", "USA_758178_S1Hand.tif", "USA_670826_S1Hand.tif"]
+skip_images = ["Somalia_60129_S1Hand.tif", "USA_504150_S1Hand.tif", "USA_758178_S1Hand.tif", "USA_670826_S1Hand.tif", "USA_595451_S1Hand.tif"]
 img_list = [img for img in img_list if img not in skip_images]
 mask_list = [mask for img, mask in zip(df.iloc[:, 0].tolist(), mask_list) if img not in skip_images]
 
