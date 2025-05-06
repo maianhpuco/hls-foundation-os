@@ -7,12 +7,9 @@ import matplotlib.pyplot as plt
 from mmseg.apis import init_segmentor, inference_segmentor
 from mmcv import Config
 from mmseg.datasets.pipelines import Compose
-from mmcv.utils import Registry
+from mmseg.datasets.builder import PIPELINES
 import warnings
 warnings.filterwarnings("ignore")
-
-# Registry for custom pipeline transforms
-PIPELINES = Registry("pipeline")
 
 # Custom pipeline transform to load images with rasterio
 @PIPELINES.register_module()
