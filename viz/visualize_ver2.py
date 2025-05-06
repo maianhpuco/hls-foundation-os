@@ -194,7 +194,7 @@ test_pipeline = Compose(pipeline_cfg)
 
 # Visualization Setup
 palette = {0: [0, 0, 255], 1: [255, 0, 0], 2: [128, 128, 128]}
-output_dir = "./vis/outputs/nprompt_16_resized_v2"
+output_dir = "./vis/outputs/nprompt_16_resized_v3"
 os.makedirs(output_dir, exist_ok=True)
 
 # Load dataset
