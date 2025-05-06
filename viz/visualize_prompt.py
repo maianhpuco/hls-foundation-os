@@ -11,8 +11,8 @@ from mmseg.datasets.builder import PIPELINES
 from mmcv.parallel import DataContainer
 import cv2
 import warnings
+
 warnings.filterwarnings("ignore")
-# warnings.filterWarnings("ignore")
 
 # --- Custom Raster Loader ---
 @PIPELINES.register_module()
@@ -152,12 +152,15 @@ def custom_inference_segmentor(model, data):
                 raise ValueError(f"img_metas is unexpectedly a string: {metas}")
             if not isinstance(metas, dict):
                 raise ValueError(f"img_metas is not a dictionary: type={type(metas)}, content={metas}")
+            # Ensure metas is a list of dictionaries
+            metas_list = [metas]
+            print(f"Passing to model: img_shape={imgs.shape}, metas_list={metas_list}")
             if isinstance(imgs, DataContainer):
                 imgs = imgs.data
             if isinstance(imgs, torch.Tensor):
                 imgs = [imgs]
             imgs = [img.unsqueeze(0).cuda() if torch.cuda.is_available() else img.unsqueeze(0) for img in imgs]
-            result = model(return_loss=False, img=imgs, img_metas=[metas])
+            result = model(return_loss=False, img=imgs, img_metas=metas_list)
         return result
     except Exception as e:
         raise Exception(f"Inference failed: {str(e)}")
@@ -274,7 +277,7 @@ for idx, img_name in enumerate(img_list):
         result = custom_inference_segmentor(model, data)
         pred_mask = result[0]
     except Exception as e:
-        print(f"Error inferring {img_name_s2}: {e}")
+        print(f"Warning: Skipping inference for {img_name_s2} due to error: {e}")
         continue
 
     try:
