@@ -11,6 +11,7 @@ from mmseg.datasets.builder import PIPELINES
 from mmcv.parallel import DataContainer
 import cv2
 import warnings
+import traceback
 
 warnings.filterwarnings("ignore")
 
@@ -152,8 +153,21 @@ def custom_inference_segmentor(model, data):
                 raise ValueError(f"img_metas is unexpectedly a string: {metas}")
             if not isinstance(metas, dict):
                 raise ValueError(f"img_metas is not a dictionary: type={type(metas)}, content={metas}")
-            # Ensure metas is a list of dictionaries
-            metas_list = [metas]
+            # Clean metas to remove string fields that might cause issues
+            metas_cleaned = {
+                k: v for k, v in metas.items()
+                if k not in ["filename", "ori_filename"] and not isinstance(v, str)
+            }
+            # Preserve essential fields
+            metas_cleaned["img_info"] = metas.get("img_info", {})
+            metas_cleaned["img_shape"] = metas.get("img_shape", (224, 224))
+            metas_cleaned["ori_shape"] = metas.get("ori_shape", (224, 224))
+            metas_cleaned["pad_shape"] = metas.get("pad_shape", (224, 224))
+            metas_cleaned["img_norm_cfg"] = metas.get("img_norm_cfg", {})
+            metas_cleaned["scale_factor"] = metas.get("scale_factor", 1.0)
+            metas_cleaned["flip"] = metas.get("flip", False)
+            metas_cleaned["flip_direction"] = metas.get("flip_direction", None)
+            metas_list = [metas_cleaned]
             print(f"Passing to model: img_shape={imgs.shape}, metas_list={metas_list}")
             if isinstance(imgs, DataContainer):
                 imgs = imgs.data
@@ -163,6 +177,7 @@ def custom_inference_segmentor(model, data):
             result = model(return_loss=False, img=imgs, img_metas=metas_list)
         return result
     except Exception as e:
+        print(f"Traceback for inference error:\n{traceback.format_exc()}")
         raise Exception(f"Inference failed: {str(e)}")
 
 # --- Visualization Helpers ---
