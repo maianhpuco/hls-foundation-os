@@ -130,6 +130,6 @@ if __name__ == '__main__':
 
 
         # Save instead of display  
-        os.makedirs('./plot/full', exist_ok=True)
-        plt.savefig('./plot/full/vis_{}.png'.format(IMG_NAME.rsplit('.', 1)[0]), bbox_inches='tight', dpi=300)  
+        os.makedirs('./plotting/full', exist_ok=True)
+        plt.savefig('./plotting/full/vis_{}.png'.format(IMG_NAME.rsplit('.', 1)[0]), bbox_inches='tight', dpi=300)  
         plt.close(fig)  # Close the figure to free memory  
