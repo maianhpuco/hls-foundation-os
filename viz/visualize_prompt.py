@@ -191,8 +191,7 @@ def enhance_raster_for_visualization(raster):
         if not np.any(valid_mask):
             channels.append(np.zeros_like(ref))
             continue
-        vmin, vmax = np.percentile(ref[valid_mask], PER勞
-CENTILES)
+        vmin, vmax = np.percentile(ref[valid_mask], PERCENTILES)
         norm = (ref - vmin) / (vmax - vmin)
         norm[~valid_mask] = 0
         channels.append(np.clip(norm, 0, 1))
