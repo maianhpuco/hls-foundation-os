@@ -30,6 +30,8 @@ class LoadImageWithRasterio:
         results["img"] = img
         results["img_shape"] = img.shape[1:]  # (H, W)
         results["ori_shape"] = img.shape[1:]  # (H, W)
+        results["filename"] = filename  # Explicitly set filename
+        results["ori_filename"] = os.path.basename(filename)  # Set ori_filename
         return results
 
 # Visualization enhancement (adapted from your code)
@@ -104,11 +106,8 @@ test_pipeline = [
             "img_info",
             "filename",
             "ori_filename",
-            "img",
             "img_shape",
             "ori_shape",
-            "pad_shape",
-            "scale_factor",
             "img_norm_cfg",
         ],
     ),
@@ -141,6 +140,8 @@ for idx, img_name in enumerate(img_list):
     data = {"img_info": {"filename": img_path}}
     try:
         data = test_pipeline(data)
+        # Debug: Print results keys before CollectTestList
+        print(f"Results keys after pipeline for {img_name}: {list(data.keys())}")
     except Exception as e:
         print(f"Error processing {img_name}: {e}")
         continue
@@ -154,7 +155,7 @@ for idx, img_name in enumerate(img_list):
         continue
 
     # Load input image and ground truth for visualization
-    with enimgrasterio.open(img_path) as src:
+    with rasterio.open(img_path) as src:
         input_data = src.read()  # Shape: (C, H, W)
     input_data = np.where(input_data == cfg.image_nodata, cfg.image_nodata_replace, input_data)
     raster_vis = enhance_raster_for_visualization(input_data[rgb_bands])
